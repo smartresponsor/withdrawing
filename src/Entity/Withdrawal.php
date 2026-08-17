@@ -1,0 +1,203 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Withdrawing\Entity;
+
+use App\Objecting\EntityInterface\ObjectEntityInterface;
+use App\Objecting\EntityTrait\Embeddable\ObjectAuditEmbeddableTrait;
+use App\Objecting\EntityTrait\Embeddable\ObjectIdentityEmbeddableTrait;
+use App\Objecting\EntityTrait\Embeddable\ObjectStateEmbeddableTrait;
+use App\Objecting\EntityTrait\Embeddable\ObjectTitleEmbeddableTrait;
+use App\Withdrawing\Enum\WithdrawalStatus;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
+
+#[ORM\Entity]
+#[ORM\Table(name: 'withdrawal_request')]
+#[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_idempotency_key', columns: ['idempotency_key'])]
+class Withdrawal implements ObjectEntityInterface
+{
+    use ObjectIdentityEmbeddableTrait;
+    use ObjectTitleEmbeddableTrait;
+    use ObjectAuditEmbeddableTrait;
+    use ObjectStateEmbeddableTrait;
+
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid', unique: true)]
+    private Uuid $id;
+
+    #[ORM\Column(name: 'source_type', length: 64)]
+    private string $sourceType;
+
+    #[ORM\Column(name: 'source_id', length: 128)]
+    private string $sourceId;
+
+    #[ORM\Column(name: 'actor_type', length: 64)]
+    private string $actorType;
+
+    #[ORM\Column(name: 'actor_id', length: 128)]
+    private string $actorId;
+
+    #[ORM\Column(name: 'destination_reference', length: 191)]
+    private string $destinationReference;
+
+    #[ORM\Column(name: 'amount_minor', type: 'bigint')]
+    private int $amountMinor;
+
+    #[ORM\Column(length: 3)]
+    private string $currency;
+
+    #[ORM\Column(name: 'idempotency_key', length: 128, unique: true)]
+    private string $idempotencyKey;
+
+    #[ORM\Column(enumType: WithdrawalStatus::class)]
+    private WithdrawalStatus $status;
+
+    #[ORM\Column(name: 'rail_reference', length: 191, nullable: true)]
+    private ?string $railReference = null;
+
+    public function __construct(
+        string $sourceType,
+        string $sourceId,
+        string $actorType,
+        string $actorId,
+        string $destinationReference,
+        int $amountMinor,
+        string $currency,
+        string $idempotencyKey,
+        ?Uuid $id = null,
+    ) {
+        $sourceType = trim($sourceType);
+        $sourceId = trim($sourceId);
+        $actorType = trim($actorType);
+        $actorId = trim($actorId);
+        $destinationReference = trim($destinationReference);
+        $currency = strtoupper(trim($currency));
+        $idempotencyKey = trim($idempotencyKey);
+
+        if ('' === $sourceType || '' === $sourceId || '' === $actorType || '' === $actorId || '' === $destinationReference || '' === $idempotencyKey) {
+            throw new \InvalidArgumentException('Withdrawal source, actor, destination, and idempotency key are required.');
+        }
+        if ($amountMinor <= 0 || 1 !== preg_match('/^[A-Z]{3}$/', $currency)) {
+            throw new \InvalidArgumentException('Withdrawal amount and ISO 4217 currency are invalid.');
+        }
+
+        $this->id = $id ?? Uuid::v7();
+        $this->sourceType = $sourceType;
+        $this->sourceId = $sourceId;
+        $this->actorType = $actorType;
+        $this->actorId = $actorId;
+        $this->destinationReference = $destinationReference;
+        $this->amountMinor = $amountMinor;
+        $this->currency = $currency;
+        $this->idempotencyKey = $idempotencyKey;
+        $this->status = WithdrawalStatus::Pending;
+        $now = new \DateTimeImmutable();
+        $this->initializeObjectIdentity($this->id->toRfc4122(), 'withdrawal:'.$this->id->toRfc4122());
+        $this->initializeObjectTitle('Withdrawal '.$this->id->toRfc4122());
+        $this->initializeObjectAudit($now);
+        $this->initializeObjectState(objectStatus: $this->status->value);
+    }
+
+    public function reserve(): void
+    {
+        $this->transition(WithdrawalStatus::Pending, WithdrawalStatus::Reserved);
+    }
+
+    public function start(string $railReference): void
+    {
+        $railReference = trim($railReference);
+        if ('' === $railReference) {
+            throw new \InvalidArgumentException('Withdrawal rail reference is required.');
+        }
+        $this->transition(WithdrawalStatus::Reserved, WithdrawalStatus::Processing);
+        $this->railReference = $railReference;
+    }
+
+    public function succeed(): void
+    {
+        $this->transition(WithdrawalStatus::Processing, WithdrawalStatus::Succeeded);
+    }
+
+    public function fail(): void
+    {
+        if (!in_array($this->status, [WithdrawalStatus::Pending, WithdrawalStatus::Reserved, WithdrawalStatus::Processing], true)) {
+            throw new \LogicException('Withdrawal cannot fail from its current status.');
+        }
+        $this->setStatus(WithdrawalStatus::Failed);
+    }
+
+    public function cancel(): void
+    {
+        if (!in_array($this->status, [WithdrawalStatus::Pending, WithdrawalStatus::Reserved], true)) {
+            throw new \LogicException('Withdrawal cannot be cancelled from its current status.');
+        }
+        $this->setStatus(WithdrawalStatus::Cancelled);
+    }
+
+    public function reverse(): void
+    {
+        $this->transition(WithdrawalStatus::Succeeded, WithdrawalStatus::Reversed);
+    }
+
+    private function transition(WithdrawalStatus $from, WithdrawalStatus $to): void
+    {
+        if ($this->status !== $from) {
+            throw new \LogicException(sprintf('Withdrawal must be %s before becoming %s.', $from->value, $to->value));
+        }
+        $this->setStatus($to);
+    }
+
+    private function setStatus(WithdrawalStatus $status): void
+    {
+        $this->status = $status;
+        $this->setObjectStatus($status->value);
+        $this->touchModified();
+    }
+
+    public function id(): Uuid
+    {
+        return $this->id;
+    }
+    public function sourceType(): string
+    {
+        return $this->sourceType;
+    }
+    public function sourceId(): string
+    {
+        return $this->sourceId;
+    }
+    public function actorType(): string
+    {
+        return $this->actorType;
+    }
+    public function actorId(): string
+    {
+        return $this->actorId;
+    }
+    public function destinationReference(): string
+    {
+        return $this->destinationReference;
+    }
+    public function amountMinor(): int
+    {
+        return $this->amountMinor;
+    }
+    public function currency(): string
+    {
+        return $this->currency;
+    }
+    public function idempotencyKey(): string
+    {
+        return $this->idempotencyKey;
+    }
+    public function status(): WithdrawalStatus
+    {
+        return $this->status;
+    }
+    public function railReference(): ?string
+    {
+        return $this->railReference;
+    }
+}

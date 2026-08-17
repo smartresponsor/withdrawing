@@ -1,0 +1,10 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\Withdrawing\:
+        resource: '../src/'
+        exclude:
+            - '../src/Entity/'
+            - '../src/WithdrawingBundle.php'
