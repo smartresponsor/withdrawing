@@ -27,7 +27,7 @@ final class WithdrawalTest extends TestCase
         self::assertSame('USD', $withdrawal->currency());
         self::assertSame(12500, $withdrawal->amountMinor());
 
-        $withdrawal->reserve();
+        $withdrawal->reserve('source-reservation-1');
         self::assertSame(WithdrawalStatus::Reserved, $withdrawal->status());
 
         $withdrawal->start('rail-123');
@@ -44,7 +44,7 @@ final class WithdrawalTest extends TestCase
     public function testCancelIsAllowedBeforeProcessing(): void
     {
         $withdrawal = new Withdrawal('commission', 'c-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-2');
-        $withdrawal->reserve();
+        $withdrawal->reserve('source-reservation-1');
         $withdrawal->cancel();
 
         self::assertSame(WithdrawalStatus::Cancelled, $withdrawal->status());
@@ -53,7 +53,7 @@ final class WithdrawalTest extends TestCase
     public function testProcessingWithdrawalCannotBeCancelled(): void
     {
         $withdrawal = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-3');
-        $withdrawal->reserve();
+        $withdrawal->reserve('source-reservation-1');
         $withdrawal->start('rail-1');
 
         $this->expectException(\LogicException::class);

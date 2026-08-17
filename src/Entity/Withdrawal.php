@@ -51,6 +51,9 @@ class Withdrawal implements ObjectEntityInterface
     #[ORM\Column(name: 'idempotency_key', length: 128, unique: true)]
     private string $idempotencyKey;
 
+    #[ORM\Column(name: 'source_reference', length: 191, nullable: true)]
+    private ?string $sourceReference = null;
+
     #[ORM\Column(enumType: WithdrawalStatus::class)]
     private WithdrawalStatus $status;
 
@@ -100,9 +103,15 @@ class Withdrawal implements ObjectEntityInterface
         $this->initializeObjectState(objectStatus: $this->status->value);
     }
 
-    public function reserve(): void
+    public function reserve(string $sourceReference): void
     {
+        $sourceReference = trim($sourceReference);
+        if ('' === $sourceReference) {
+            throw new \InvalidArgumentException('Withdrawal source reference is required.');
+        }
+
         $this->transition(WithdrawalStatus::Pending, WithdrawalStatus::Reserved);
+        $this->sourceReference = $sourceReference;
     }
 
     public function start(string $railReference): void
@@ -192,6 +201,11 @@ class Withdrawal implements ObjectEntityInterface
     {
         return $this->idempotencyKey;
     }
+    public function sourceReference(): ?string
+    {
+        return $this->sourceReference;
+    }
+
     public function status(): WithdrawalStatus
     {
         return $this->status;

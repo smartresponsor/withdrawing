@@ -2,6 +2,11 @@ services:
     _defaults:
         autowire: true
         autoconfigure: true
+    _instanceof:
+        App\Withdrawing\ServiceInterface\WithdrawalSourceServiceInterface:
+            tags: ['app.withdrawing.source']
+        App\Withdrawing\ServiceInterface\WithdrawalRailServiceInterface:
+            tags: ['app.withdrawing.rail']
 
     App\Withdrawing\:
         resource: '../src/'

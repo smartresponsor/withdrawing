@@ -50,6 +50,7 @@ final class Version20260817020500WithdrawalRequestAdoption extends AbstractMigra
         $table->addColumn('amount_minor', Types::BIGINT);
         $table->addColumn('currency', Types::STRING, ['length' => 3]);
         $table->addColumn('idempotency_key', Types::STRING, ['length' => 128]);
+        $table->addColumn('source_reference', Types::STRING, ['length' => 191, 'notnull' => false]);
         $table->addColumn('status', Types::STRING, ['length' => 255]);
         $table->addColumn('rail_reference', Types::STRING, ['length' => 191, 'notnull' => false]);
         $this->addObjecting($table);
@@ -62,7 +63,7 @@ final class Version20260817020500WithdrawalRequestAdoption extends AbstractMigra
 
     private function adopt(Table $table): void
     {
-        $required = ['id', 'source_type', 'source_id', 'actor_type', 'actor_id', 'destination_reference', 'amount_minor', 'currency', 'idempotency_key', 'status', 'rail_reference', 'object_uuid', 'object_slug', 'object_first_title', 'object_middle_title', 'object_last_title', 'object_created_at', 'object_modified_at', 'object_created_by', 'object_modified_by', 'object_active', 'object_enabled', 'object_status'];
+        $required = ['id', 'source_type', 'source_id', 'actor_type', 'actor_id', 'destination_reference', 'amount_minor', 'currency', 'idempotency_key', 'source_reference', 'status', 'rail_reference', 'object_uuid', 'object_slug', 'object_first_title', 'object_middle_title', 'object_last_title', 'object_created_at', 'object_modified_at', 'object_created_by', 'object_modified_by', 'object_active', 'object_enabled', 'object_status'];
         foreach ($required as $column) {
             $this->abortIf(!$table->hasColumn($column), sprintf('Existing %s is missing required column %s.', self::TABLE, $column));
         }
