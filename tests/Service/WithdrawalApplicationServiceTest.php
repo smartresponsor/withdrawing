@@ -51,6 +51,10 @@ final class WithdrawalApplicationServiceTest extends TestCase
                 $this->calls[] = 'submit:'.$idempotencyKey;
                 return 'rail-1';
             }
+            public function compensateFailure(string $railReference, string $idempotencyKey): void
+            {
+                $this->calls[] = 'compensate-failure:'.$idempotencyKey;
+            }
             public function reverse(string $railReference, string $idempotencyKey): void
             {
                 $this->calls[] = 'reverse:'.$idempotencyKey;

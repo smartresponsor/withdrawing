@@ -104,6 +104,13 @@ final readonly class WithdrawalApplicationService
         if (WithdrawalStatus::Failed === $withdrawal->status()) {
             return;
         }
+        if (WithdrawalStatus::Processing === $withdrawal->status()) {
+            $railReference = $withdrawal->railReference() ?? throw new \LogicException('Processing withdrawal is missing its rail reference.');
+            $this->railFor($withdrawal->destinationReference())->compensateFailure(
+                $railReference,
+                $this->key($withdrawal, 'rail-failure-compensation'),
+            );
+        }
         if (in_array($withdrawal->status(), [WithdrawalStatus::Reserved, WithdrawalStatus::Processing], true)) {
             $this->sourceFor($withdrawal->sourceType())->release(
                 $withdrawal->sourceId(),

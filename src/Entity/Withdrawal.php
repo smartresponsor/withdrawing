@@ -16,6 +16,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'withdrawal_request')]
 #[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_idempotency_key', columns: ['idempotency_key'])]
+#[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_rail_reference', columns: ['rail_reference'])]
 class Withdrawal implements ObjectEntityInterface
 {
     use ObjectIdentityEmbeddableTrait;
