@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Withdrawing\Entity;
 
 use App\Objecting\EntityInterface\ObjectEntityInterface;
+use App\Objecting\EntityInterface\ObjectVersionedInterface;
 use App\Objecting\EntityTrait\Embeddable\ObjectAuditEmbeddableTrait;
 use App\Objecting\EntityTrait\Embeddable\ObjectIdentityEmbeddableTrait;
 use App\Objecting\EntityTrait\Embeddable\ObjectStateEmbeddableTrait;
 use App\Objecting\EntityTrait\Embeddable\ObjectTitleEmbeddableTrait;
+use App\Objecting\EntityTrait\Embeddable\ObjectVersionEmbeddableTrait;
 use App\Withdrawing\Enum\WithdrawalStatus;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -17,12 +19,13 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'withdrawal_request')]
 #[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_idempotency_key', columns: ['idempotency_key'])]
 #[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_rail_reference', columns: ['rail_reference'])]
-class Withdrawal implements ObjectEntityInterface
+class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
 {
     use ObjectIdentityEmbeddableTrait;
     use ObjectTitleEmbeddableTrait;
     use ObjectAuditEmbeddableTrait;
     use ObjectStateEmbeddableTrait;
+    use ObjectVersionEmbeddableTrait;
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
@@ -102,6 +105,7 @@ class Withdrawal implements ObjectEntityInterface
         $this->initializeObjectTitle('Withdrawal '.$this->id->toRfc4122());
         $this->initializeObjectAudit($now);
         $this->initializeObjectState(objectStatus: $this->status->value);
+        $this->initializeObjectVersion();
     }
 
     public function reserve(string $sourceReference): void

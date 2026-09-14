@@ -34,6 +34,8 @@ final class WithdrawalTest extends TestCase
         self::assertSame('USD', $withdrawal->currency());
         self::assertSame(12500, $withdrawal->amountMinor());
         self::assertNull($withdrawal->sourceReference());
+        self::assertSame(1, $withdrawal->getObjectVersion());
+        self::assertNull($withdrawal->getObjectEtag());
 
         $withdrawal->reserve('source-reservation-1');
         self::assertSame(WithdrawalStatus::Reserved, $withdrawal->status());

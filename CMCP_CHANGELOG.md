@@ -186,3 +186,11 @@ Post-pass verification:
 
 The remaining Canon040 method percentage is retained as a documented non-blocking quality warning. The RC-relevant line and branch targets remain exceeded, and no uncovered production behavior was discovered by this pass.
 
+### 2026-09-14 — cross-repository blocker closure
+
+The previously deferred optimistic-lock blocker was repaired in Objecting owner scope. Doctrine proved that `#[ORM\\Version]` inside an embeddable is ignored, so Objecting now maps the canonical `version` field directly through `ObjectVersionEmbeddableTrait`; integration metadata reports the entity as versioned and a managed update advances version 1 -> 2 automatically. Objecting tests pass 68/68 with 462 assertions and PHPStan reports no errors.
+
+Withdrawing now composes `ObjectVersionedInterface` / `ObjectVersionEmbeddableTrait` on the mutable `Withdrawal` root and initializes the pack at construction. Forward migration `Version20260914230000WithdrawalOptimisticLocking` adds `version` and `etag` without rewriting prior migrations. Local verification passes: 26 tests / 99 assertions, PHPStan no errors, CS clean, and PHP syntax valid.
+
+Host-side stale references were also repaired in App owner scope: the Projecting workflow import now targets the current `project_projecting_workflow.yaml`, and withdrawal reconciliation SQL uses `withdrawal_status`, `modified_at`, and `created_at`. The remaining Host boot blocker is the stale Facting Composer projection; current Facting source contains `App\\Facting\\Provider\\FactCurrentSubjectProvider`, while App's installed/locked package metadata still projects the older namespace. A package refresh is currently blocked by unrelated ecosystem dependency drift (`Exchanging` requires `brick/math ^0.20` while the current Host UUID/security graph constrains Brick Math to <=0.18). Exploratory App Composer changes were reverted so the Host manifest remains lock-consistent.
+
