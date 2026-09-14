@@ -52,3 +52,19 @@ Migration of legacy records and removal of Walleting withdrawal ownership must b
 
 ## Platform dependencies
 
+Withdrawing declares Objecting, Cruding, Viewing, Interfacing, and EasyAdmin directly. Local development resolves those sibling packages through Composer path repositories with explicit `dev-master` identity pins. Because Composer does not inherit repositories from dependencies, the development manifest also exposes Cruding's reachable Collectioning and Tabling path repositories without adding them as direct Withdrawing requirements. `composer.prod.json` intentionally contains no local path repositories and resolves packaged dependencies instead.
+
+Objecting supplies the reusable identity, title, audit, and generic state mappings used by `Withdrawal`. The withdrawal lifecycle itself remains a domain-specific enum stored separately as `withdrawal_status`, while Objecting's generic state projection uses its canonical `status` column.
+
+## Quality gates
+
+```text
+composer validate --strict --check-lock
+composer cs:check
+composer phpstan
+composer test
+composer test:coverage
+composer schema:parity
+```
+
+`test:coverage` writes the branch-aware text report to `var/coverage/summary.txt`. The component is a reusable bundle rather than a standalone Symfony application, so `schema:parity` delegates read-only Doctrine schema validation and migration-currentness checks to the sibling Host test kernel instead of inventing a second application kernel inside Withdrawing.

@@ -55,7 +55,7 @@ class Withdrawal implements ObjectEntityInterface
     #[ORM\Column(name: 'source_reference', length: 191, nullable: true)]
     private ?string $sourceReference = null;
 
-    #[ORM\Column(enumType: WithdrawalStatus::class)]
+    #[ORM\Column(name: 'withdrawal_status', enumType: WithdrawalStatus::class)]
     private WithdrawalStatus $status;
 
     #[ORM\Column(name: 'rail_reference', length: 191, nullable: true)]

@@ -11,6 +11,11 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 
+/**
+ * Provides the EasyAdmin back-office field projection for withdrawal records.
+ *
+ * @extends AbstractCrudController<Withdrawal>
+ */
 final class WithdrawalCrudController extends AbstractCrudController
 {
     public static function getEntityFqcn(): string

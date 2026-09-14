@@ -1,0 +1,49 @@
+{
+  "name": "smartresponsor/withdrawing",
+  "description": "Smart Responsor withdrawal lifecycle and cash-out orchestration component",
+  "type": "symfony-bundle",
+  "license": "proprietary",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "php": "^8.4",
+    "cruding/crud": "dev-master",
+    "doctrine/dbal": "^4.3",
+    "doctrine/doctrine-bundle": "^3.0",
+    "doctrine/doctrine-migrations-bundle": "^4.0",
+    "doctrine/orm": "^3.4",
+    "easycorp/easyadmin-bundle": "^5.0",
+    "interfacing/interface": "dev-master",
+    "objecting/object": "dev-master",
+    "symfony/config": "^8.1",
+    "symfony/dependency-injection": "^8.1",
+    "symfony/framework-bundle": "^8.1",
+    "symfony/http-foundation": "^8.1",
+    "symfony/http-kernel": "^8.1",
+    "symfony/runtime": "^8.1",
+    "symfony/serializer": "^8.1",
+    "symfony/uid": "^8.1",
+    "symfony/validator": "^8.1",
+    "symfony/yaml": "^8.1",
+    "viewing/view": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\Withdrawing\\": "src/",
+      "App\\Withdrawing\\Migrations\\": "migrations/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "symfony/flex": true,
+      "symfony/runtime": true
+    },
+    "sort-packages": true
+  },
+  "extra": {
+    "symfony": {
+      "allow-contrib": false,
+      "require": "^8.1"
+    }
+  }
+}

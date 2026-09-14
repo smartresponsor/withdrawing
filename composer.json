@@ -6,10 +6,12 @@
   "minimum-stability": "dev",
   "prefer-stable": true,
   "repositories": [
-    {"type": "path", "url": "../Objecting", "options": {"symlink": true}},
-    {"type": "path", "url": "../Interfacing", "options": {"symlink": true}},
-    {"type": "path", "url": "../Viewing", "options": {"symlink": true}},
-    {"type": "path", "url": "../Cruding", "options": {"symlink": true}}
+    {"type": "path", "url": "../Objecting", "options": {"symlink": true, "versions": {"objecting/object": "dev-master"}}},
+    {"type": "path", "url": "../Interfacing", "options": {"symlink": true, "versions": {"interfacing/interface": "dev-master"}}},
+    {"type": "path", "url": "../Viewing", "options": {"symlink": true, "versions": {"viewing/view": "dev-master"}}},
+    {"type": "path", "url": "../Cruding", "options": {"symlink": true, "versions": {"cruding/crud": "dev-master"}}},
+    {"type": "path", "url": "../Collectioning", "options": {"symlink": true, "versions": {"collectioning/collection": "dev-master"}}},
+    {"type": "path", "url": "../Tabling", "options": {"symlink": true, "versions": {"tabling/table": "dev-master"}}}
   ],
   "require": {
     "php": "^8.4",
@@ -35,6 +37,7 @@
   },
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^3.95",
+    "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^12.3",
     "symfony/phpunit-bridge": "^8.1"
   },
@@ -43,7 +46,16 @@
   "scripts": {
     "cs:check": "php-cs-fixer fix --dry-run --diff",
     "cs:fix": "php-cs-fixer fix",
-    "test": "phpunit"
+    "phpstan": "phpstan analyse -c phpstan.neon",
+    "schema:parity": [
+      "@php ../App/bin/console doctrine:schema:validate --env=test",
+      "@php ../App/bin/console doctrine:migrations:up-to-date --env=test"
+    ],
+    "test": "phpunit -c phpunit.xml.dist",
+    "test:coverage": [
+      "@php -r \"if (!is_dir('var/coverage')) { mkdir('var/coverage', 0777, true); }\"",
+      "@php -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit.xml.dist --path-coverage --coverage-text=var/coverage/summary.txt"
+    ]
   },
   "config": {
     "allow-plugins": {"symfony/flex": true, "symfony/runtime": true},

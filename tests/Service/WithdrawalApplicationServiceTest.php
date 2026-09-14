@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Withdrawing\Tests\Service;
 
+use App\Withdrawing\Entity\Withdrawal;
 use App\Withdrawing\Enum\WithdrawalStatus;
 use App\Withdrawing\Service\WithdrawalApplicationService;
 use App\Withdrawing\ServiceInterface\WithdrawalRailServiceInterface;
@@ -17,6 +18,7 @@ final class WithdrawalApplicationServiceTest extends TestCase
     public function testLifecycleCrossesSourceAndRailBoundaries(): void
     {
         $source = new class () implements WithdrawalSourceServiceInterface {
+            /** @var list<string> */
             public array $calls = [];
             public function supports(string $sourceType): bool
             {
@@ -41,6 +43,7 @@ final class WithdrawalApplicationServiceTest extends TestCase
             }
         };
         $rail = new class () implements WithdrawalRailServiceInterface {
+            /** @var list<string> */
             public array $calls = [];
             public function supports(string $destinationReference): bool
             {
@@ -77,8 +80,155 @@ final class WithdrawalApplicationServiceTest extends TestCase
         self::assertSame(WithdrawalStatus::Processing, $withdrawal->status());
         self::assertSame(['submit:request-1:rail-submit'], $rail->calls);
 
+        $service->begin($withdrawal);
+        self::assertSame(['submit:request-1:rail-submit'], $rail->calls);
+
         $service->succeed($withdrawal);
         self::assertSame(WithdrawalStatus::Succeeded, $withdrawal->status());
-        self::assertSame('finalize:request-1:source-finalize', $source->calls[1]);
+        self::assertSame([
+            'reserve:request-1:source-reserve',
+            'finalize:request-1:source-finalize',
+        ], $source->calls);
+
+        $service->succeed($withdrawal);
+        self::assertCount(2, $source->calls);
+    }
+
+    public function testProcessingFailureCompensatesRailAndReleasesSource(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->method('supports')->willReturn(true);
+        $source->expects(self::once())->method('release')->with('wallet-1', 'reservation-1', 'request-2:source-release');
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->method('supports')->willReturn(true);
+        $rail->expects(self::once())->method('compensateFailure')->with('rail-1', 'request-2:rail-failure-compensation');
+        $withdrawal = $this->withdrawal('request-2');
+        $withdrawal->reserve('reservation-1');
+        $withdrawal->start('rail-1');
+        $service = $this->service($source, $rail);
+
+        $service->fail($withdrawal);
+        $service->fail($withdrawal);
+
+        self::assertSame(WithdrawalStatus::Failed, $withdrawal->status());
+    }
+
+    public function testReservedCancellationReleasesSourceAndIsIdempotent(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->method('supports')->willReturn(true);
+        $source->expects(self::once())->method('release')->with('wallet-1', 'reservation-1', 'request-3:source-release');
+        $rail = $this->createStub(WithdrawalRailServiceInterface::class);
+        $withdrawal = $this->withdrawal('request-3');
+        $withdrawal->reserve('reservation-1');
+        $service = $this->service($source, $rail);
+
+        $service->cancel($withdrawal);
+        $service->cancel($withdrawal);
+
+        self::assertSame(WithdrawalStatus::Cancelled, $withdrawal->status());
+    }
+
+    public function testSucceededWithdrawalCanBeReversedExactlyOnce(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->method('supports')->willReturn(true);
+        $source->expects(self::once())->method('reverse')->with('wallet-1', 'reservation-1', 'request-4:source-reverse');
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->method('supports')->willReturn(true);
+        $rail->expects(self::once())->method('reverse')->with('rail-1', 'request-4:rail-reverse');
+        $withdrawal = $this->withdrawal('request-4');
+        $withdrawal->reserve('reservation-1');
+        $withdrawal->start('rail-1');
+        $withdrawal->succeed();
+        $service = $this->service($source, $rail);
+
+        $service->reverse($withdrawal);
+        $service->reverse($withdrawal);
+
+        self::assertSame(WithdrawalStatus::Reversed, $withdrawal->status());
+    }
+
+    public function testMatchingReplayReturnsExistingWithdrawalWithoutNewReservation(): void
+    {
+        $existing = $this->withdrawal('request-5');
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->expects(self::never())->method('reserve');
+        $service = $this->service($source, $this->createStub(WithdrawalRailServiceInterface::class), $existing);
+
+        $actual = $service->request('wallet', 'wallet-1', 'vendor', 'vendor-1', 'paying:destination-1', 2500, 'usd', 'request-5');
+
+        self::assertSame($existing, $actual);
+    }
+
+    public function testMismatchedReplayIsRejected(): void
+    {
+        $existing = $this->withdrawal('request-6');
+        $service = $this->service(
+            $this->createStub(WithdrawalSourceServiceInterface::class),
+            $this->createStub(WithdrawalRailServiceInterface::class),
+            $existing,
+        );
+
+        $this->expectException(\DomainException::class);
+        $service->request('wallet', 'wallet-1', 'vendor', 'vendor-1', 'paying:destination-1', 2600, 'USD', 'request-6');
+    }
+
+    public function testUnsupportedSourceAndRailFailClosed(): void
+    {
+        $source = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $source->method('supports')->willReturn(false);
+        $service = $this->service($source, $this->createStub(WithdrawalRailServiceInterface::class));
+
+        try {
+            $service->request('wallet', 'wallet-1', 'vendor', 'vendor-1', 'paying:destination-1', 2500, 'USD', 'request-7');
+            self::fail('Unsupported withdrawal source must fail closed.');
+        } catch (\DomainException $exception) {
+            self::assertStringContainsString('source', $exception->getMessage());
+        }
+
+        $rail = $this->createStub(WithdrawalRailServiceInterface::class);
+        $rail->method('supports')->willReturn(false);
+        $withdrawal = $this->withdrawal('request-8');
+        $withdrawal->reserve('reservation-1');
+
+        $this->expectException(\DomainException::class);
+        $this->service($this->createStub(WithdrawalSourceServiceInterface::class), $rail)->begin($withdrawal);
+    }
+
+    public function testInvalidApplicationTransitionsFailClosed(): void
+    {
+        $service = $this->service(
+            $this->createStub(WithdrawalSourceServiceInterface::class),
+            $this->createStub(WithdrawalRailServiceInterface::class),
+        );
+
+        foreach (['begin', 'succeed', 'reverse'] as $operation) {
+            try {
+                $service->{$operation}($this->withdrawal('invalid-'.$operation));
+                self::fail(sprintf('%s must reject a pending withdrawal.', $operation));
+            } catch (\LogicException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
+    private function withdrawal(string $idempotencyKey): Withdrawal
+    {
+        return new Withdrawal('wallet', 'wallet-1', 'vendor', 'vendor-1', 'paying:destination-1', 2500, 'USD', $idempotencyKey);
+    }
+
+    private function service(
+        WithdrawalSourceServiceInterface $source,
+        WithdrawalRailServiceInterface $rail,
+        ?Withdrawal $existing = null,
+    ): WithdrawalApplicationService {
+        $repository = $this->createStub(EntityRepository::class);
+        $repository->method('findOneBy')->willReturn($existing);
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturn($repository);
+        $entityManager->method('wrapInTransaction')->willReturnCallback(static fn (callable $callback): mixed => $callback());
+
+        return new WithdrawalApplicationService($entityManager, [$source], [$rail]);
     }
 }

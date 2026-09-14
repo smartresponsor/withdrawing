@@ -24,8 +24,16 @@ final class WithdrawalTest extends TestCase
         );
 
         self::assertSame(WithdrawalStatus::Pending, $withdrawal->status());
+        self::assertNotSame('', $withdrawal->id()->toRfc4122());
+        self::assertSame('wallet', $withdrawal->sourceType());
+        self::assertSame('wallet-123', $withdrawal->sourceId());
+        self::assertSame('vendor', $withdrawal->actorType());
+        self::assertSame('vendor-456', $withdrawal->actorId());
+        self::assertSame('payment-destination-789', $withdrawal->destinationReference());
+        self::assertSame('withdrawal-test-1', $withdrawal->idempotencyKey());
         self::assertSame('USD', $withdrawal->currency());
         self::assertSame(12500, $withdrawal->amountMinor());
+        self::assertNull($withdrawal->sourceReference());
 
         $withdrawal->reserve('source-reservation-1');
         self::assertSame(WithdrawalStatus::Reserved, $withdrawal->status());
@@ -64,5 +72,49 @@ final class WithdrawalTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 0, 'USD', 'withdrawal-test-4');
+    }
+
+    public function testRequestIdentityMustNotBeBlank(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new Withdrawal('', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-5');
+    }
+
+    public function testSourceAndRailReferencesMustNotBeBlank(): void
+    {
+        $withdrawal = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-6');
+
+        try {
+            $withdrawal->reserve(' ');
+            self::fail('Blank source reference must be rejected.');
+        } catch (\InvalidArgumentException) {
+            self::addToAssertionCount(1);
+        }
+
+        $withdrawal->reserve('reservation-1');
+        try {
+            $withdrawal->start(' ');
+            self::fail('Blank rail reference must be rejected.');
+        } catch (\InvalidArgumentException) {
+            self::addToAssertionCount(1);
+        }
+    }
+
+    public function testFailureRejectsTerminalState(): void
+    {
+        $withdrawal = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-7');
+        $withdrawal->cancel();
+
+        $this->expectException(\LogicException::class);
+        $withdrawal->fail();
+    }
+
+    public function testTransitionRejectsUnexpectedStatus(): void
+    {
+        $withdrawal = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-8');
+        $withdrawal->reserve('reservation-1');
+
+        $this->expectException(\LogicException::class);
+        $withdrawal->reserve('reservation-2');
     }
 }

@@ -48,6 +48,11 @@ class WithdrawalSettlementEvent
         $this->createdAt = new \DateTimeImmutable();
     }
 
+    public function id(): Uuid
+    {
+        return $this->id;
+    }
+
     public function provider(): string
     {
         return $this->provider;
@@ -79,6 +84,14 @@ class WithdrawalSettlementEvent
     public function failureMessage(): ?string
     {
         return $this->failureMessage;
+    }
+    public function createdAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+    public function processedAt(): ?\DateTimeImmutable
+    {
+        return $this->processedAt;
     }
 
     public function markProcessed(?string $failureCode = null, ?string $failureMessage = null): void
