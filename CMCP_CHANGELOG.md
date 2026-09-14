@@ -171,3 +171,18 @@ External/integration blockers retained rather than patched across repository bou
 
 Git integration facts at this checkpoint: `master` is protected for push, there is no configured `origin` or upstream, and the pre-existing `.gating/` directory remains intentionally excluded from the task-owned change set.
 
+### 2026-09-14 — bounded coverage tail
+
+A final bounded state-machine pass added only behaviorally meaningful fail-closed regression cases: invalid `start`, `succeed`, and `reverse` transitions, failure from every non-terminal lifecycle state, and ISO-4217 currency rejection. No production semantics were changed.
+
+Post-pass verification:
+
+- `composer test:coverage`: PASS, 26 tests / 97 assertions;
+- coverage remains exactly 91.47% lines, 87.11% branches and 71.15% fully-covered methods;
+- the unchanged branch/line/method counters prove the newly explicit guards were already exercised indirectly by the existing suite. Additional test multiplication solely to force PHPUnit/Xdebug path-complete method accounting is therefore not RC-justified;
+- `composer cs:check`: PASS, 0/13 files require fixes;
+- `composer phpstan`: PASS, no errors;
+- `composer validate --strict --check-lock`: PASS.
+
+The remaining Canon040 method percentage is retained as a documented non-blocking quality warning. The RC-relevant line and branch targets remain exceeded, and no uncovered production behavior was discovered by this pass.
+

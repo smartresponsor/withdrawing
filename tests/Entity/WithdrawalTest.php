@@ -117,4 +117,52 @@ final class WithdrawalTest extends TestCase
         $this->expectException(\LogicException::class);
         $withdrawal->reserve('reservation-2');
     }
+
+    public function testStartRejectsUnexpectedStatus(): void
+    {
+        $withdrawal = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-9');
+
+        $this->expectException(\LogicException::class);
+        $withdrawal->start('rail-1');
+    }
+
+    public function testSucceedRejectsUnexpectedStatus(): void
+    {
+        $withdrawal = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-10');
+
+        $this->expectException(\LogicException::class);
+        $withdrawal->succeed();
+    }
+
+    public function testReverseRejectsUnexpectedStatus(): void
+    {
+        $withdrawal = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-11');
+
+        $this->expectException(\LogicException::class);
+        $withdrawal->reverse();
+    }
+
+    public function testFailIsAllowedAcrossNonTerminalStates(): void
+    {
+        $pending = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-12');
+        $pending->fail();
+        self::assertSame(WithdrawalStatus::Failed, $pending->status());
+
+        $reserved = new Withdrawal('wallet', 'w-2', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-13');
+        $reserved->reserve('reservation-2');
+        $reserved->fail();
+        self::assertSame(WithdrawalStatus::Failed, $reserved->status());
+
+        $processing = new Withdrawal('wallet', 'w-3', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-14');
+        $processing->reserve('reservation-3');
+        $processing->start('rail-3');
+        $processing->fail();
+        self::assertSame(WithdrawalStatus::Failed, $processing->status());
+    }
+
+    public function testCurrencyMustBeIso4217AlphaCode(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'US', 'withdrawal-test-15');
+    }
 }
