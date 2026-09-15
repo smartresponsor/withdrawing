@@ -17,6 +17,9 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'withdrawal_request')]
+#[ORM\Index(name: 'idx_withdrawing_request_source_status', columns: ['source_type', 'source_id', 'withdrawal_status'])]
+#[ORM\Index(name: 'idx_withdrawing_request_status_created', columns: ['withdrawal_status', 'created_at'])]
+#[ORM\Index(name: 'idx_withdrawing_request_actor_status', columns: ['actor_type', 'actor_id', 'withdrawal_status'])]
 #[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_idempotency_key', columns: ['idempotency_key'])]
 #[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_rail_reference', columns: ['rail_reference'])]
 class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface

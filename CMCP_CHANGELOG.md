@@ -194,3 +194,22 @@ Withdrawing now composes `ObjectVersionedInterface` / `ObjectVersionEmbeddableTr
 
 Host-side stale references were also repaired in App owner scope: the Projecting workflow import now targets the current `project_projecting_workflow.yaml`, and withdrawal reconciliation SQL uses `withdrawal_status`, `modified_at`, and `created_at`. The remaining Host boot blocker is the stale Facting Composer projection; current Facting source contains `App\\Facting\\Provider\\FactCurrentSubjectProvider`, while App's installed/locked package metadata still projects the older namespace. A package refresh is currently blocked by unrelated ecosystem dependency drift (`Exchanging` requires `brick/math ^0.20` while the current Host UUID/security graph constrains Brick Math to <=0.18). Exploratory App Composer changes were reverted so the Host manifest remains lock-consistent.
 
+### 2026-09-14 — PostgreSQL schema-slice closure
+
+The Host PostgreSQL migration contour was taken through the remaining executable blockers rather than treating global schema validation as an opaque failure.
+
+- a physical duplicate Attaching index on `attachment_link.attachment_id` was confirmed in PostgreSQL as both quoted `IDX_CEDF8DCE464E68B` and lowercase `idx_cedf8dce464e68b`; the quoted duplicate was removed through a one-purpose guarded local maintenance script and the canonical lowercase index was verified to remain;
+- Domaining's declaration-link migration was made adoption-safe by replacing whole-schema DBAL `Schema` mutations with explicit guarded PostgreSQL DDL, avoiding unrelated comparator side effects;
+- Currencing's legacy-schema guard was corrected so `currency_currency` is queried only after table existence has been confirmed, preventing PostgreSQL from resolving a missing relation inside the original compound condition;
+- the Host migration chain now reports `Up-to-date! No migrations to execute.` in the local dev PostgreSQL runtime;
+- global `doctrine:schema:validate --em=postgres` still reports database drift, but a generated PostgreSQL diagnostic diff proved that the residual drift is outside Withdrawing ownership.
+
+Withdrawing-specific parity was closed explicitly:
+
+- the three existing operational request indexes (`source/status`, `status/created`, and `actor/status`) are now declared in `Withdrawal` ORM metadata so Doctrine preserves rather than drops them;
+- forward migration `Version20260915040000WithdrawalVersionAndIndexParity` sets the canonical version default to `1` and normalizes the two Objecting identity index names without rewriting historical migrations or dropping data;
+- the guarded Host migration plan contained exactly one Withdrawing migration / five planned SQL operations and applied successfully;
+- a fresh post-repair PostgreSQL Doctrine diff contained zero references to either `withdrawal_request` or `withdrawal_settlement_event`.
+
+Therefore the Withdrawing PostgreSQL schema slice is synchronized. The remaining Host-wide PostgreSQL drift is retained as separate multi-component platform debt and is not a Withdrawing RC blocker.
+
