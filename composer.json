@@ -48,8 +48,8 @@
     "cs:fix": "php-cs-fixer fix",
     "phpstan": "phpstan analyse -c phpstan.neon",
     "schema:parity": [
-      "@php ../App/bin/console doctrine:schema:validate --env=test",
-      "@php ../App/bin/console doctrine:migrations:up-to-date --env=test"
+      "@php ../App/bin/console doctrine:schema:validate --env=dev",
+      "@php ../App/bin/console doctrine:migrations:up-to-date --env=dev"
     ],
     "test": "phpunit -c phpunit.xml.dist",
     "test:coverage": [
