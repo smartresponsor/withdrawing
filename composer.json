@@ -47,10 +47,8 @@
     "cs:check": "php-cs-fixer fix --dry-run --diff",
     "cs:fix": "php-cs-fixer fix",
     "phpstan": "phpstan analyse -c phpstan.neon",
-    "schema:parity": [
-      "@php ../App/bin/console doctrine:schema:validate --env=dev",
-      "@php ../App/bin/console doctrine:migrations:up-to-date --env=dev"
-    ],
+    "doctrine:schema:validate": "@php tool/schema-parity.php",
+    "schema:parity": "@doctrine:schema:validate",
     "test": "phpunit -c phpunit.xml.dist",
     "test:coverage": [
       "@php -r \"if (!is_dir('var/coverage')) { mkdir('var/coverage', 0777, true); }\"",

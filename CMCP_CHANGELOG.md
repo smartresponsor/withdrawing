@@ -213,3 +213,25 @@ Withdrawing-specific parity was closed explicitly:
 
 Therefore the Withdrawing PostgreSQL schema slice is synchronized. The remaining Host-wide PostgreSQL drift is retained as separate multi-component platform debt and is not a Withdrawing RC blocker.
 
+## 2026-09-20 — RC gate contract hardening
+
+Current reconnaissance re-read the Withdrawing manifest, README, source/tests, existing CMCP journal, mandatory Objecting/Cruding/Viewing/Interfacing helper contracts, Canonization textual rules and Gating/RC evidence. Relevant canon mapping remains Canon029 (quality tooling), Canon030 (Doctrine entity/migration parity), Canon033 (dev/prod manifest identity), Canon043 (local dev-master path identity), and Canon045 (reachable local repository closure). The repository starts this pass at HEAD `87f3ca1b05cf14a584a75181e5c67bde6830e086` with no tracked diff; only the pre-existing untracked `.gating/` surface is outside task ownership.
+
+Market/enterprise comparison remains consistent with the established boundary: payout systems require durable idempotency, retry-safe settlement events, machine-readable failure diagnostics, reconciliation correlation, and explicit asynchronous lifecycle states. Provider transport stays in Paying, ledger/balance ownership stays in Walleting, and operator UI stays outside Withdrawing.
+
+The complete executable contour exposed one RC-critical contract defect: `composer schema:parity` delegated global Host schema synchronization to `doctrine:schema:validate`, so unrelated Host schema drift made the Withdrawing gate fail even after the owned PostgreSQL slice had been proven synchronized.
+
+The gate is now component-scoped without weakening Canon030. `tool/schema-parity.php` loads the Host-installed Doctrine/Symfony runtime libraries and PostgreSQL connection environment without booting the Host kernel, builds current metadata only for Withdrawing entities, compares the owned `withdrawal_request` and `withdrawal_settlement_event` tables directly with that metadata, and verifies every local Withdrawing migration against `doctrine_migration_versions`. Composer exposes the check as both `doctrine:schema:validate` and `schema:parity`, matching the Canon030 textual requirement and its executable Gating mirror. The focused check passes with `2 tables, 6 migrations`. No repository-local roadmap or architecture/memory graph asset exists beyond historical journal references; no graph mutation was therefore applicable.
+
+Final acceptance for this pass:
+- `composer validate --strict --check-lock`: PASS;
+- `php -l tool/schema-parity.php`: PASS;
+- `composer cs:check`: PASS across 14 PHP files;
+- `composer phpstan`: PASS at level 8 across `src`, `tests`, and `tool`;
+- `composer test`: PASS, 26 tests / 99 assertions;
+- `composer test:coverage`: PASS, 26 tests / 99 assertions with Xdebug path coverage enabled;
+- `composer schema:parity`: PASS, 2 owned tables / 6 local migrations synchronized;
+- RC diagnostic: Canon issue count 0; the only pre-commit blocker is the expected uncommitted task-owned change set.
+
+Growth workstream remains deliberately post-RC: expose provider-neutral settlement/reconciliation observability and read-model diagnostics from Withdrawing where they represent withdrawal lifecycle state, while keeping provider webhook transport in Paying, balances/ledger in Walleting, rendering in Viewing, and shell/template ownership in Interfacing. No speculative growth change is included in this RC patch.
+
