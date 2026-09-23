@@ -15,7 +15,7 @@ use Symfony\Component\Uid\Uuid;
 class WithdrawalSettlementEvent
 {
     #[ORM\Id]
-    #[ORM\Column(type: 'uuid', unique: true)]
+    #[ORM\Column(type: 'uuid')]
     private Uuid $id;
 
     #[ORM\Column(length: 32)] private string $provider;

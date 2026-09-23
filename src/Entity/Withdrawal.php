@@ -31,7 +31,7 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
     use ObjectVersionEmbeddableTrait;
 
     #[ORM\Id]
-    #[ORM\Column(type: 'uuid', unique: true)]
+    #[ORM\Column(type: 'uuid')]
     private Uuid $id;
 
     #[ORM\Column(name: 'source_type', length: 64)]
@@ -55,7 +55,7 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
     #[ORM\Column(length: 3)]
     private string $currency;
 
-    #[ORM\Column(name: 'idempotency_key', length: 128, unique: true)]
+    #[ORM\Column(name: 'idempotency_key', length: 128)]
     private string $idempotencyKey;
 
     #[ORM\Column(name: 'source_reference', length: 191, nullable: true)]
