@@ -63,6 +63,20 @@ $manager = new EntityManager($connection, $config);
 try {
     $metadata = $manager->getMetadataFactory()->getAllMetadata();
     $expected = (new SchemaTool($manager))->getSchemaFromMetadata($metadata);
+
+    // Objecting normally contributes identity uniqueness through its Doctrine
+    // loadClassMetadata listener. This standalone parity tool does not boot
+    // ObjectBundle, so reproduce that metadata contract explicitly.
+    if ($expected->hasTable('withdrawal_request')) {
+        $withdrawalRequest = $expected->getTable('withdrawal_request');
+        if (!$withdrawalRequest->hasIndex('uniq_withdrawal_request_uuid')) {
+            $withdrawalRequest->addUniqueIndex(['uuid'], 'uniq_withdrawal_request_uuid');
+        }
+        if (!$withdrawalRequest->hasIndex('uniq_withdrawal_request_slug')) {
+            $withdrawalRequest->addUniqueIndex(['slug'], 'uniq_withdrawal_request_slug');
+        }
+    }
+
     $schemaManager = $connection->createSchemaManager();
     $comparator = $schemaManager->createComparator();
 
