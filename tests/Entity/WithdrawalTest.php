@@ -167,4 +167,56 @@ final class WithdrawalTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'US', 'withdrawal-test-15');
     }
+
+    public function testPersistenceBoundariesRejectOversizedRequestIdentityBeforeLifecycleWork(): void
+    {
+        foreach ([
+            ['sourceType', str_repeat('s', 65)],
+            ['sourceId', str_repeat('s', 129)],
+            ['actorType', str_repeat('a', 65)],
+            ['actorId', str_repeat('a', 129)],
+            ['destinationReference', str_repeat('d', 192)],
+            ['idempotencyKey', str_repeat('i', 129)],
+        ] as [$field, $oversized]) {
+            $arguments = [
+                'sourceType' => 'wallet',
+                'sourceId' => 'w-1',
+                'actorType' => 'vendor',
+                'actorId' => 'v-1',
+                'destinationReference' => 'dest-1',
+                'amountMinor' => 100,
+                'currency' => 'USD',
+                'idempotencyKey' => 'withdrawal-test-boundary',
+            ];
+            $arguments[$field] = $oversized;
+
+            try {
+                new Withdrawal(...$arguments);
+                self::fail(sprintf('Oversized %s must be rejected.', $field));
+            } catch (\InvalidArgumentException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testPersistenceBoundariesRejectOversizedLifecycleReferencesBeforeTransition(): void
+    {
+        $withdrawal = new Withdrawal('wallet', 'w-1', 'vendor', 'v-1', 'dest-1', 100, 'USD', 'withdrawal-test-reference-boundary');
+
+        try {
+            $withdrawal->reserve(str_repeat('r', 192));
+            self::fail('Oversized source reference must be rejected.');
+        } catch (\InvalidArgumentException) {
+            self::assertSame(WithdrawalStatus::Pending, $withdrawal->status());
+        }
+
+        $withdrawal->reserve('reservation-1');
+
+        try {
+            $withdrawal->start(str_repeat('r', 192));
+            self::fail('Oversized rail reference must be rejected.');
+        } catch (\InvalidArgumentException) {
+            self::assertSame(WithdrawalStatus::Reserved, $withdrawal->status());
+        }
+    }
 }

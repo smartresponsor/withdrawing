@@ -1,6 +1,6 @@
 # Withdrawing
 
-Symfony 8.1 / PHP 8.4 component that owns the reusable cash-out lifecycle across SmartResponsor products and brands.
+Symfony 8.1 / PHP 8.4 component that owns the reusable cash-out lifecycle across platform consumers and brands.
 
 ## Responsibility
 
@@ -67,4 +67,4 @@ composer test:coverage
 composer schema:parity
 ```
 
-`test:coverage` writes the branch-aware text report to `var/coverage/summary.txt`. The component is a reusable bundle rather than a standalone Symfony application, so `doctrine:schema:validate` and `schema:parity` run the repository-owned `tool/schema-parity.php` check. It loads the Host's installed runtime libraries and PostgreSQL connection environment without booting the Host kernel, builds Doctrine metadata only for Withdrawing entities, compares the owned `withdrawal_request` and `withdrawal_settlement_event` tables with that metadata, and verifies that all six local Withdrawing migrations are recorded as executed. Unrelated Host DI, workflow, table, or custom-type drift therefore cannot create a false-negative Withdrawing RC gate.
+`test:coverage` writes the branch-aware text report to `var/coverage/summary.txt`. The component is a reusable bundle rather than a standalone Symfony application, so `doctrine:schema:validate` and `schema:parity` run the repository-owned `tool/schema-parity.php` check. It loads the Host's installed runtime libraries and PostgreSQL connection environment without booting the Host kernel, builds Doctrine metadata only for Withdrawing entities, compares the owned `withdrawal_request` and `withdrawal_settlement_event` tables with that metadata, and verifies that all local Withdrawing migrations are recorded as executed. Unrelated Host DI, workflow, table, or custom-type drift therefore cannot create a false-negative Withdrawing RC gate.

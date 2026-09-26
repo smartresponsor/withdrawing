@@ -54,7 +54,17 @@ final readonly class WithdrawalApplicationService
                 $withdrawal->currency(),
                 $this->key($withdrawal, 'source-reserve'),
             );
-            $withdrawal->reserve($sourceReference);
+            try {
+                $withdrawal->reserve($sourceReference);
+            } catch (\InvalidArgumentException $exception) {
+                $source->release(
+                    $withdrawal->sourceId(),
+                    $sourceReference,
+                    $this->key($withdrawal, 'source-release'),
+                );
+
+                throw $exception;
+            }
             $this->entityManager->persist($withdrawal);
             $this->entityManager->flush();
 
@@ -71,13 +81,23 @@ final readonly class WithdrawalApplicationService
             throw new \LogicException('Only reserved withdrawal can begin rail processing.');
         }
 
-        $railReference = $this->railFor($withdrawal->destinationReference())->submit(
+        $rail = $this->railFor($withdrawal->destinationReference());
+        $railReference = $rail->submit(
             $withdrawal->destinationReference(),
             $withdrawal->amountMinor(),
             $withdrawal->currency(),
             $this->key($withdrawal, 'rail-submit'),
         );
-        $withdrawal->start($railReference);
+        try {
+            $withdrawal->start($railReference);
+        } catch (\InvalidArgumentException $exception) {
+            $rail->compensateFailure(
+                $railReference,
+                $this->key($withdrawal, 'rail-failure-compensation'),
+            );
+
+            throw $exception;
+        }
         $this->entityManager->flush();
     }
 

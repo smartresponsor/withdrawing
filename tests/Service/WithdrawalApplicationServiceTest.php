@@ -196,6 +196,58 @@ final class WithdrawalApplicationServiceTest extends TestCase
         $this->service($this->createStub(WithdrawalSourceServiceInterface::class), $rail)->begin($withdrawal);
     }
 
+    public function testInvalidReservedReferenceIsReleasedBeforeRequestFailureEscapes(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->method('supports')->willReturn(true);
+        $invalidReference = str_repeat('r', 192);
+        $source->expects(self::once())
+            ->method('reserve')
+            ->willReturn($invalidReference);
+        $source->expects(self::once())
+            ->method('release')
+            ->with('wallet-1', $invalidReference, 'request-invalid-source-reference:source-release');
+
+        $service = $this->service($source, $this->createStub(WithdrawalRailServiceInterface::class));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $service->request(
+            'wallet',
+            'wallet-1',
+            'vendor',
+            'vendor-1',
+            'paying:destination-1',
+            2500,
+            'USD',
+            'request-invalid-source-reference',
+        );
+    }
+
+    public function testInvalidRailReferenceIsCompensatedBeforeBeginFailureEscapes(): void
+    {
+        $source = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->method('supports')->willReturn(true);
+        $invalidReference = str_repeat('r', 192);
+        $rail->expects(self::once())
+            ->method('submit')
+            ->willReturn($invalidReference);
+        $rail->expects(self::once())
+            ->method('compensateFailure')
+            ->with($invalidReference, 'request-invalid-rail-reference:rail-failure-compensation');
+
+        $withdrawal = $this->withdrawal('request-invalid-rail-reference');
+        $withdrawal->reserve('reservation-1');
+        $service = $this->service($source, $rail);
+
+        try {
+            $service->begin($withdrawal);
+            self::fail('Invalid rail reference must fail begin.');
+        } catch (\InvalidArgumentException) {
+            self::assertSame(WithdrawalStatus::Reserved, $withdrawal->status());
+        }
+    }
+
     public function testInvalidApplicationTransitionsFailClosed(): void
     {
         $service = $this->service(

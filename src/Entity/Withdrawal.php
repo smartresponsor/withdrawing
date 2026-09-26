@@ -89,6 +89,12 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         if ('' === $sourceType || '' === $sourceId || '' === $actorType || '' === $actorId || '' === $destinationReference || '' === $idempotencyKey) {
             throw new \InvalidArgumentException('Withdrawal source, actor, destination, and idempotency key are required.');
         }
+        self::assertMaxLength($sourceType, 64, 'source type');
+        self::assertMaxLength($sourceId, 128, 'source id');
+        self::assertMaxLength($actorType, 64, 'actor type');
+        self::assertMaxLength($actorId, 128, 'actor id');
+        self::assertMaxLength($destinationReference, 191, 'destination reference');
+        self::assertMaxLength($idempotencyKey, 128, 'idempotency key');
         if ($amountMinor <= 0 || 1 !== preg_match('/^[A-Z]{3}$/', $currency)) {
             throw new \InvalidArgumentException('Withdrawal amount and ISO 4217 currency are invalid.');
         }
@@ -117,6 +123,7 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         if ('' === $sourceReference) {
             throw new \InvalidArgumentException('Withdrawal source reference is required.');
         }
+        self::assertMaxLength($sourceReference, 191, 'source reference');
 
         $this->transition(WithdrawalStatus::Pending, WithdrawalStatus::Reserved);
         $this->sourceReference = $sourceReference;
@@ -128,6 +135,7 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         if ('' === $railReference) {
             throw new \InvalidArgumentException('Withdrawal rail reference is required.');
         }
+        self::assertMaxLength($railReference, 191, 'rail reference');
         $this->transition(WithdrawalStatus::Reserved, WithdrawalStatus::Processing);
         $this->railReference = $railReference;
     }
@@ -171,6 +179,13 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         $this->status = $status;
         $this->setObjectStatus($status->value);
         $this->touchModified();
+    }
+
+    private static function assertMaxLength(string $value, int $maxLength, string $field): void
+    {
+        if (strlen($value) > $maxLength) {
+            throw new \InvalidArgumentException(sprintf('Withdrawal %s exceeds the persistence limit of %d characters.', $field, $maxLength));
+        }
     }
 
     public function id(): Uuid
