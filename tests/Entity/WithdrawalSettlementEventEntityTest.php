@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Withdrawing\Tests\Entity;
 
-use App\Withdrawing\Entity\WithdrawalSettlementEvent;
+use App\Withdrawing\Entity\WithdrawalSettlementEventEntity;
 use PHPUnit\Framework\TestCase;
 
-final class WithdrawalSettlementEventTest extends TestCase
+final class WithdrawalSettlementEventEntityTest extends TestCase
 {
     public function testConstructionNormalizesProviderAndPayloadIdentity(): void
     {
         $hash = str_repeat('A', 64);
-        $event = new WithdrawalSettlementEvent(
+        $event = new WithdrawalSettlementEventEntity(
             ' Stripe ',
             ' evt_123 ',
             ' payout.paid ',
@@ -63,12 +63,12 @@ final class WithdrawalSettlementEventTest extends TestCase
     public function testInvalidSettlementIdentityIsRejected(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        new WithdrawalSettlementEvent('', 'evt_123', 'payout.paid', null, 'not-a-sha256');
+        new WithdrawalSettlementEventEntity('', 'evt_123', 'payout.paid', null, 'not-a-sha256');
     }
 
     public function testBlankRailReferenceNormalizesToNullAndProcessedDiagnosticsMayBeAbsent(): void
     {
-        $event = new WithdrawalSettlementEvent('stripe', 'evt_456', 'payout.paid', ' ', str_repeat('b', 64));
+        $event = new WithdrawalSettlementEventEntity('stripe', 'evt_456', 'payout.paid', ' ', str_repeat('b', 64));
         self::assertNull($event->railReference());
 
         $event->markProcessed();
@@ -78,8 +78,8 @@ final class WithdrawalSettlementEventTest extends TestCase
         self::assertNotNull($event->processedAt());
     }
 
-    private function event(): WithdrawalSettlementEvent
+    private function event(): WithdrawalSettlementEventEntity
     {
-        return new WithdrawalSettlementEvent('stripe', 'evt_123', 'payout.paid', 'rail-123', str_repeat('a', 64));
+        return new WithdrawalSettlementEventEntity('stripe', 'evt_123', 'payout.paid', 'rail-123', str_repeat('a', 64));
     }
 }

@@ -12,7 +12,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\UniqueConstraint(name: 'uniq_withdrawal_settlement_provider_event', columns: ['provider', 'provider_event_id'])]
 #[ORM\Index(name: 'idx_withdrawal_settlement_rail_reference', columns: ['rail_reference'])]
 #[ORM\Index(name: 'idx_withdrawal_settlement_outcome_created', columns: ['outcome', 'created_at'])]
-class WithdrawalSettlementEvent
+class WithdrawalSettlementEventEntity
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
