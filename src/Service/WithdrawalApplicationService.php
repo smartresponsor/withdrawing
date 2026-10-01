@@ -6,9 +6,9 @@ namespace App\Withdrawing\Service;
 
 use App\Withdrawing\Entity\Withdrawal;
 use App\Withdrawing\Enum\WithdrawalStatus;
+use App\Withdrawing\RepositoryInterface\WithdrawalRepositoryInterface;
 use App\Withdrawing\ServiceInterface\WithdrawalRailServiceInterface;
 use App\Withdrawing\ServiceInterface\WithdrawalSourceServiceInterface;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 final readonly class WithdrawalApplicationService
@@ -18,7 +18,7 @@ final readonly class WithdrawalApplicationService
      * @param iterable<WithdrawalRailServiceInterface>   $rails
      */
     public function __construct(
-        private EntityManagerInterface $entityManager,
+        private WithdrawalRepositoryInterface $repository,
         #[AutowireIterator('app.withdrawing.source')]
         private iterable $sources,
         #[AutowireIterator('app.withdrawing.rail')]
@@ -36,10 +36,10 @@ final readonly class WithdrawalApplicationService
         string $currency,
         string $idempotencyKey,
     ): Withdrawal {
-        return $this->entityManager->wrapInTransaction(function () use ($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $currency, $idempotencyKey): Withdrawal {
+        return $this->repository->transactional(function () use ($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $currency, $idempotencyKey): Withdrawal {
             $normalizedCurrency = strtoupper(trim($currency));
             $normalizedKey = trim($idempotencyKey);
-            $existing = $this->entityManager->getRepository(Withdrawal::class)->findOneBy(['idempotencyKey' => $normalizedKey]);
+            $existing = $this->repository->findByIdempotencyKey($normalizedKey);
             if ($existing instanceof Withdrawal) {
                 $this->assertReplayMatches($existing, $sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency);
 
@@ -65,8 +65,8 @@ final readonly class WithdrawalApplicationService
 
                 throw $exception;
             }
-            $this->entityManager->persist($withdrawal);
-            $this->entityManager->flush();
+            $this->repository->add($withdrawal);
+            $this->repository->flush();
 
             return $withdrawal;
         });
@@ -98,7 +98,7 @@ final readonly class WithdrawalApplicationService
 
             throw $exception;
         }
-        $this->entityManager->flush();
+        $this->repository->flush();
     }
 
     public function succeed(Withdrawal $withdrawal): void
@@ -116,7 +116,7 @@ final readonly class WithdrawalApplicationService
             $this->key($withdrawal, 'source-finalize'),
         );
         $withdrawal->succeed();
-        $this->entityManager->flush();
+        $this->repository->flush();
     }
 
     public function fail(Withdrawal $withdrawal): void
@@ -139,7 +139,7 @@ final readonly class WithdrawalApplicationService
             );
         }
         $withdrawal->fail();
-        $this->entityManager->flush();
+        $this->repository->flush();
     }
 
     public function cancel(Withdrawal $withdrawal): void
@@ -155,7 +155,7 @@ final readonly class WithdrawalApplicationService
             );
         }
         $withdrawal->cancel();
-        $this->entityManager->flush();
+        $this->repository->flush();
     }
 
     public function reverse(Withdrawal $withdrawal): void
@@ -178,7 +178,7 @@ final readonly class WithdrawalApplicationService
             $this->key($withdrawal, 'source-reverse'),
         );
         $withdrawal->reverse();
-        $this->entityManager->flush();
+        $this->repository->flush();
     }
 
     private function sourceFor(string $sourceType): WithdrawalSourceServiceInterface

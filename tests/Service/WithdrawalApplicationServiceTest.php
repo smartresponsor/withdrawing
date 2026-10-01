@@ -6,11 +6,10 @@ namespace App\Withdrawing\Tests\Service;
 
 use App\Withdrawing\Entity\Withdrawal;
 use App\Withdrawing\Enum\WithdrawalStatus;
+use App\Withdrawing\RepositoryInterface\WithdrawalRepositoryInterface;
 use App\Withdrawing\Service\WithdrawalApplicationService;
 use App\Withdrawing\ServiceInterface\WithdrawalRailServiceInterface;
 use App\Withdrawing\ServiceInterface\WithdrawalSourceServiceInterface;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 
 final class WithdrawalApplicationServiceTest extends TestCase
@@ -64,12 +63,8 @@ final class WithdrawalApplicationServiceTest extends TestCase
             }
         };
 
-        $repository = $this->createStub(EntityRepository::class);
-        $repository->method('findOneBy')->willReturn(null);
-        $entityManager = $this->createStub(EntityManagerInterface::class);
-        $entityManager->method('getRepository')->willReturn($repository);
-        $entityManager->method('wrapInTransaction')->willReturnCallback(static fn (callable $callback): mixed => $callback());
-        $service = new WithdrawalApplicationService($entityManager, [$source], [$rail]);
+        $repository = $this->repository();
+        $service = new WithdrawalApplicationService($repository, [$source], [$rail]);
 
         $withdrawal = $service->request('wallet', 'wallet-1', 'vendor', 'vendor-1', 'paying:destination-1', 2500, 'usd', 'request-1');
         self::assertSame(WithdrawalStatus::Reserved, $withdrawal->status());
@@ -275,12 +270,15 @@ final class WithdrawalApplicationServiceTest extends TestCase
         WithdrawalRailServiceInterface $rail,
         ?Withdrawal $existing = null,
     ): WithdrawalApplicationService {
-        $repository = $this->createStub(EntityRepository::class);
-        $repository->method('findOneBy')->willReturn($existing);
-        $entityManager = $this->createStub(EntityManagerInterface::class);
-        $entityManager->method('getRepository')->willReturn($repository);
-        $entityManager->method('wrapInTransaction')->willReturnCallback(static fn (callable $callback): mixed => $callback());
+        return new WithdrawalApplicationService($this->repository($existing), [$source], [$rail]);
+    }
 
-        return new WithdrawalApplicationService($entityManager, [$source], [$rail]);
+    private function repository(?Withdrawal $existing = null): WithdrawalRepositoryInterface
+    {
+        $repository = $this->createStub(WithdrawalRepositoryInterface::class);
+        $repository->method('transactional')->willReturnCallback(static fn (callable $callback): mixed => $callback());
+        $repository->method('findByIdempotencyKey')->willReturn($existing);
+
+        return $repository;
     }
 }

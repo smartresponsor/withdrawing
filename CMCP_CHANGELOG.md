@@ -257,3 +257,23 @@ Follow-up implementation: coordinated the persisted settlement type rename from 
 
 Git/integration: task-owned source/test/journal/README changes coexist with pre-existing dirty Composer/Gating/license state; `composer.json` and `composer.prod.json` were already modified before this run and therefore remain mixed-ownership paths. The repository has no remote/upstream, so no publication path exists. No destructive cleanup, reset, stash, sibling source mutation, or UI change was performed.
 
+## 2026-09-30 — engine-20260930213453-withdrawing-7aa32d
+
+Baseline: local `master` at `b5657409a4535066b769a46d9c4d143170783f2c`, no remote/upstream, with six pre-existing dirty paths preserved: deleted `.gating/README.md`, modified `composer.json`, `composer.lock`, `composer.prod.json`, and untracked `LICENSE` / `NOTICE`. The authoritative 2026-09-29 CanonScanning report was read as the initial RED backlog; current local `composer gate` is green (9 rules, 0 failed, 0 warnings), so the scan is not treated as a current-tree substitute.
+
+Reconnaissance read the current Withdrawing README/manifests/source/tests, Objecting/Cruding/Viewing/Interfacing contracts, Canonization AGENTS projection and the normative Canon004, Canon018, Canon025, Canon041, Canon045, Canon047 and Canon052 rule texts. Canon045's reported Failing closure is stale against current Cruding, which no longer declares `failing/failure`. Canon047 remains directly actionable: `WithdrawalApplicationService` injects `EntityManagerInterface` outside `src/Repository/`.
+
+Target-to-canon mapping for this pass: Canon047 is selected as safe repository-local remediation; Canon018/Canon004 package/entity identity requires a coordinated consumer migration because App still imports `App\\Withdrawing\\Entity\\Withdrawal` and requires `smartresponsor/withdrawing`; Canon052 would require removing tracked copied `.gating/` engine/policy content, which is incompatible with this run's destructive-operation prohibition; Canon025/041 remain additive follow-up candidates after the current persistence-boundary repair is verified.
+
+Market/enterprise baseline remains payout-oriented: persistence/idempotency boundaries, explicit reconciliation state, deterministic failure handling, and auditable transitions are RC-critical; provider transport, wallet ledger ownership, and speculative operator UX remain outside Withdrawing.
+
+RC-critical workstream selected: move direct Doctrine manager access behind a typed Withdrawing repository contract, preserve lifecycle semantics and tests, then run deterministic PHP/Composer/Gating verification and fresh Inspecting if the repository fingerprint changes. Growth remains separate: richer payout tracing/reconciliation diagnostics and operator-facing observability.
+
+Implementation: added `WithdrawalRepositoryInterface` and Doctrine-backed `WithdrawalRepository`; `WithdrawalApplicationService` now consumes the repository contract for transactions, idempotency lookup, persistence, and flush; Symfony DI aliases the contract to the repository implementation; service tests now stub the repository contract rather than Doctrine infrastructure. No lifecycle/API behavior was intentionally changed.
+
+Verification after repair: PHPUnit PASS (30 tests / 116 assertions); PHPStan PASS (0 errors); PHP-CS-Fixer dry-run PASS; `composer validate --strict --check-lock` PASS; local `composer gate` PASS (9 rules, 0 failed, 0 warnings, 2 profile-related skips). An initial repository-file parse omission was caught by PHPStan, repaired, and the affected gates were rerun green.
+
+Fresh standalone Inspecting was attempted twice after mutation. Both Console MCP synchronous calls exceeded the transport execution window before returning a report reference; `repo_quality_status` confirms Inspecting is available, but no fresh result can be claimed from those timed-out invocations. The prior 2026-09-29 report therefore remains historical/stale evidence only.
+
+Residual RC blockers are explicit: Canon004/018 require a coordinated package/entity identity migration because the Host still requires `smartresponsor/withdrawing` and imports `App\\Withdrawing\\Entity\\Withdrawal`; Canon052 requires removing tracked copied `.gating/` engine/policy content, but destructive operations are forbidden in this run; Canon025/041 standalone/browser surfaces remain unresolved by this persistence-focused safe pass.
+

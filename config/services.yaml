@@ -13,3 +13,6 @@ services:
         exclude:
             - '../src/Entity/'
             - '../src/WithdrawingBundle.php'
+
+    App\Withdrawing\RepositoryInterface\WithdrawalRepositoryInterface:
+        alias: App\Withdrawing\Repository\WithdrawalRepository
