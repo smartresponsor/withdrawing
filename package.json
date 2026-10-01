@@ -1,0 +1,11 @@
+{
+  "name": "withdrawing-test-tooling",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}

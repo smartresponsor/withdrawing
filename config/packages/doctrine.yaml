@@ -1,0 +1,14 @@
+doctrine:
+    dbal:
+        url: '%env(default:withdrawing_database_url:WITHDRAWING_DATABASE_URL)%'
+    orm:
+        enable_native_lazy_objects: true
+        auto_mapping: false
+        naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+        mappings:
+            Withdrawing:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/Entity'
+                prefix: 'App\Withdrawing\Entity'
+                alias: Withdrawing

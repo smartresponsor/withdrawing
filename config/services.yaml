@@ -1,3 +1,7 @@
+parameters:
+    withdrawing_app_secret: 'withdrawing-standalone-test-secret'
+    withdrawing_database_url: 'sqlite:///%kernel.cache_dir%/withdrawing.db'
+
 services:
     _defaults:
         autowire: true
