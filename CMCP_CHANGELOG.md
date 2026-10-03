@@ -331,5 +331,9 @@ Market/enterprise baseline: mature payout systems separate durable transfer life
 
 Material implementation in this pass: completed repository hygiene by ignoring Console MCP runtime output and Symfony's generated `config/reference.php`, preserving both generated surfaces without destructive deletion and keeping them out of Git integration. This complements the existing Node/Playwright/runtime/cache ignore baseline.
 
-Verification on the current tree before this hygiene patch: `composer validate --strict --check-lock` PASS; `composer quality` PASS with PHP-CS-Fixer clean, PHPStan 0 errors, PHPUnit 32 tests / 118 assertions, and Gating 0 failed / 0 warnings. Final verification and Git reconciliation are recorded below once rerun against the resulting worktree.
+Verification on the current tree before this hygiene patch: `composer validate --strict --check-lock` PASS; `composer quality` PASS with PHP-CS-Fixer clean, PHPStan 0 errors, PHPUnit 32 tests / 118 assertions, and Gating 0 failed / 0 warnings.
+
+Final acceptance after mutation: `composer schema:parity` PASS (2 tables / 7 migrations synchronized); `npm test` PASS (Playwright 1/1); `composer quality` PASS again with CS clean, PHPStan 0 errors, PHPUnit 32/32 with 118 assertions, and Gating 0 failed / 0 warnings. No browser/user-visible UI changed, so screenshot evidence is not applicable to this pass.
+
+Git reconciliation: coherent canon/remediation state in `.gitignore`, this journal, Composer manifests/lock, `LICENSE`, and `NOTICE` was committed as signed commit `3381eb7` (`chore: close Withdrawing RC canon contracts`). The repository has no configured remote or upstream, so publication cannot proceed without inventing integration infrastructure. The pre-existing deletion of `.gating/README.md` was intentionally left uncommitted because Canon052 permits a non-executable artifact-boundary README and absorbing that deletion is neither necessary for RC correctness nor safe under the no-destructive-operations contract.
 
