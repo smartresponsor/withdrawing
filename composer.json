@@ -1,17 +1,91 @@
 {
   "name": "smartresponsor/withdrawing",
-  "description": "Smart Responsor withdrawal lifecycle and cash-out orchestration component",
+  "description": "Withdrawal lifecycle and cash-out orchestration component for the multi-domain SaaS platform",
   "type": "symfony-bundle",
-  "license": "proprietary",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "minimum-stability": "dev",
   "prefer-stable": true,
   "repositories": [
-    {"type": "path", "url": "../Objecting", "options": {"symlink": true, "versions": {"objecting/object": "dev-master"}}},
-    {"type": "path", "url": "../Interfacing", "options": {"symlink": true, "versions": {"interfacing/interface": "dev-master"}}},
-    {"type": "path", "url": "../Viewing", "options": {"symlink": true, "versions": {"viewing/view": "dev-master"}}},
-    {"type": "path", "url": "../Cruding", "options": {"symlink": true, "versions": {"cruding/crud": "dev-master"}}},
-    {"type": "path", "url": "../Collectioning", "options": {"symlink": true, "versions": {"collectioning/collection": "dev-master"}}},
-    {"type": "path", "url": "../Tabling", "options": {"symlink": true, "versions": {"tabling/table": "dev-master"}}}
+    {
+      "type": "path",
+      "url": "../Objecting",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "objecting/object": "dev-master"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../Interfacing",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "interfacing/interface": "dev-master"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../Viewing",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "viewing/view": "dev-master"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../Cruding",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "cruding/crud": "dev-master"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../Collectioning",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "collectioning/collection": "dev-master"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../Tabling",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "tabling/table": "dev-master"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../Failing",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "failing/failure": "dev-master"
+        }
+      }
+    },
+    {
+      "type": "path",
+      "url": "../Gating",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "gating/gate": "dev-master"
+        }
+      }
+    }
   ],
   "require": {
     "php": "^8.4",
@@ -39,10 +113,23 @@
     "friendsofphp/php-cs-fixer": "^3.95",
     "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^12.3",
-    "symfony/phpunit-bridge": "^8.1"
+    "symfony/browser-kit": "^8.1",
+    "symfony/css-selector": "^8.1",
+    "symfony/panther": "^2.4",
+    "symfony/phpunit-bridge": "^8.1",
+    "gating/gate": "dev-master"
   },
-  "autoload": {"psr-4": {"App\\Withdrawing\\": "src/", "App\\Withdrawing\\Migrations\\": "migrations/"}},
-  "autoload-dev": {"psr-4": {"App\\Withdrawing\\Tests\\": "tests/"}},
+  "autoload": {
+    "psr-4": {
+      "App\\Withdrawing\\": "src/",
+      "App\\Withdrawing\\Migrations\\": "migrations/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "App\\Withdrawing\\Tests\\": "tests/"
+    }
+  },
   "scripts": {
     "cs:check": "php-cs-fixer fix --dry-run --diff",
     "cs:fix": "php-cs-fixer fix",
@@ -53,11 +140,26 @@
     "test:coverage": [
       "@php -r \"if (!is_dir('var/coverage')) { mkdir('var/coverage', 0777, true); }\"",
       "@php -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit.xml.dist --path-coverage --coverage-text=var/coverage/summary.txt"
+    ],
+    "gate": "@php vendor/bin/gating check --target=.",
+    "quality": [
+      "@cs:check",
+      "@phpstan",
+      "@test",
+      "@gate"
     ]
   },
   "config": {
-    "allow-plugins": {"symfony/flex": true, "symfony/runtime": true},
+    "allow-plugins": {
+      "symfony/flex": true,
+      "symfony/runtime": true
+    },
     "sort-packages": true
   },
-  "extra": {"symfony": {"allow-contrib": false, "require": "^8.1"}}
+  "extra": {
+    "symfony": {
+      "allow-contrib": false,
+      "require": "^8.1"
+    }
+  }
 }
