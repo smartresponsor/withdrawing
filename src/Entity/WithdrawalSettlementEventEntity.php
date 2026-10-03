@@ -39,6 +39,12 @@ class WithdrawalSettlementEventEntity
         if ('' === $provider || '' === $providerEventId || '' === $eventType || 1 !== preg_match('/^[a-f0-9]{64}$/', $payloadHash)) {
             throw new \InvalidArgumentException('Withdrawal settlement event identity is invalid.');
         }
+        self::assertMaxLength($provider, 32, 'provider');
+        self::assertMaxLength($providerEventId, 191, 'provider event id');
+        self::assertMaxLength($eventType, 96, 'event type');
+        if (null !== $railReference && '' !== $railReference) {
+            self::assertMaxLength($railReference, 191, 'rail reference');
+        }
         $this->id = Uuid::v7();
         $this->provider = $provider;
         $this->providerEventId = $providerEventId;
@@ -96,8 +102,12 @@ class WithdrawalSettlementEventEntity
 
     public function markProcessed(?string $failureCode = null, ?string $failureMessage = null): void
     {
+        $failureCode = null === $failureCode ? null : trim($failureCode);
+        if (null !== $failureCode && '' !== $failureCode) {
+            self::assertMaxLength($failureCode, 128, 'failure code');
+        }
         $this->outcome = 'processed';
-        $this->failureCode = null === $failureCode ? null : trim($failureCode);
+        $this->failureCode = $failureCode;
         $this->failureMessage = null === $failureMessage ? null : trim($failureMessage);
         $this->processedAt = new \DateTimeImmutable();
     }
@@ -108,9 +118,18 @@ class WithdrawalSettlementEventEntity
     }
     public function markFailed(string $code, string $message): void
     {
+        $code = trim($code);
+        self::assertMaxLength($code, 128, 'failure code');
         $this->outcome = 'failed';
-        $this->failureCode = trim($code);
+        $this->failureCode = $code;
         $this->failureMessage = trim($message);
         $this->processedAt = new \DateTimeImmutable();
+    }
+
+    private static function assertMaxLength(string $value, int $maxLength, string $field): void
+    {
+        if (strlen($value) > $maxLength) {
+            throw new \InvalidArgumentException(sprintf('Withdrawal settlement event %s exceeds the persistence limit of %d characters.', $field, $maxLength));
+        }
     }
 }

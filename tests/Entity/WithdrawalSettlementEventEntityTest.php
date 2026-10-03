@@ -78,6 +78,38 @@ final class WithdrawalSettlementEventEntityTest extends TestCase
         self::assertNotNull($event->processedAt());
     }
 
+    public function testPersistedIdentityLengthLimitsAreRejectedBeforeFlush(): void
+    {
+        foreach ([
+            [str_repeat('p', 33), 'evt_123', 'payout.paid', null],
+            ['stripe', str_repeat('e', 192), 'payout.paid', null],
+            ['stripe', 'evt_123', str_repeat('t', 97), null],
+            ['stripe', 'evt_123', 'payout.paid', str_repeat('r', 192)],
+        ] as [$provider, $providerEventId, $eventType, $railReference]) {
+            try {
+                new WithdrawalSettlementEventEntity($provider, $providerEventId, $eventType, $railReference, str_repeat('a', 64));
+                self::fail('Expected persistence length validation to reject settlement identity.');
+            } catch (\InvalidArgumentException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testFailureCodeLengthLimitIsRejectedBeforeFlush(): void
+    {
+        $processed = $this->event();
+        try {
+            $processed->markProcessed(str_repeat('c', 129), 'Provider rejected');
+            self::fail('Expected processed failure code length validation.');
+        } catch (\InvalidArgumentException) {
+            self::addToAssertionCount(1);
+        }
+
+        $failed = $this->event();
+        $this->expectException(\InvalidArgumentException::class);
+        $failed->markFailed(str_repeat('c', 129), 'Provider rejected');
+    }
+
     private function event(): WithdrawalSettlementEventEntity
     {
         return new WithdrawalSettlementEventEntity('stripe', 'evt_123', 'payout.paid', 'rail-123', str_repeat('a', 64));
