@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "test": "playwright test",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "test:behavioral-coverage": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0"
