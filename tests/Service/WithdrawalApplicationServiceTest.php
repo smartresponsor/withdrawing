@@ -218,6 +218,80 @@ final class WithdrawalApplicationServiceTest extends TestCase
         );
     }
 
+    public function testPersistenceFailureReleasesReservedSourceBeforeRequestFailureEscapes(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->method('supports')->willReturn(true);
+        $source->expects(self::once())
+            ->method('reserve')
+            ->willReturn('reservation-persistence-failure');
+        $source->expects(self::once())
+            ->method('release')
+            ->with('wallet-1', 'reservation-persistence-failure', 'request-persistence-failure:source-release');
+
+        $repository = $this->createStub(WithdrawalRepositoryInterface::class);
+        $repository->method('transactional')->willReturnCallback(static fn (callable $callback): mixed => $callback());
+        $repository->method('findByIdempotencyKey')->willReturn(null);
+        $repository->method('flush')->willThrowException(new \RuntimeException('Persistence failed.'));
+        $service = new WithdrawalApplicationService(
+            $repository,
+            [$source],
+            [$this->createStub(WithdrawalRailServiceInterface::class)],
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Persistence failed.');
+        $service->request(
+            'wallet',
+            'wallet-1',
+            'vendor',
+            'vendor-1',
+            'paying:destination-1',
+            2500,
+            'USD',
+            'request-persistence-failure',
+        );
+    }
+
+    public function testTransactionCommitFailureReleasesReservedSourceBeforeRequestFailureEscapes(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->method('supports')->willReturn(true);
+        $source->expects(self::once())
+            ->method('reserve')
+            ->with('wallet-1', 2500, 'USD', 'request-commit-failure:source-reserve')
+            ->willReturn('reservation-commit-failure');
+        $source->expects(self::once())
+            ->method('release')
+            ->with('wallet-1', 'reservation-commit-failure', 'request-commit-failure:source-release');
+
+        $repository = $this->createStub(WithdrawalRepositoryInterface::class);
+        $repository->method('findByIdempotencyKey')->willReturn(null);
+        $repository->method('transactional')->willReturnCallback(static function (callable $callback): mixed {
+            $callback();
+
+            throw new \RuntimeException('Transaction commit failed.');
+        });
+        $service = new WithdrawalApplicationService(
+            $repository,
+            [$source],
+            [$this->createStub(WithdrawalRailServiceInterface::class)],
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Transaction commit failed.');
+        $service->request(
+            'wallet',
+            'wallet-1',
+            'vendor',
+            'vendor-1',
+            'paying:destination-1',
+            2500,
+            'USD',
+            'request-commit-failure',
+        );
+    }
+
     public function testInvalidRailReferenceIsCompensatedBeforeBeginFailureEscapes(): void
     {
         $source = $this->createStub(WithdrawalSourceServiceInterface::class);

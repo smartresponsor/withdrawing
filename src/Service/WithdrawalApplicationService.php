@@ -42,40 +42,53 @@ final readonly class WithdrawalApplicationService
         string $currency,
         string $idempotencyKey,
     ): Withdrawal {
-        return $this->repository->transactional(function () use ($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $currency, $idempotencyKey): Withdrawal {
-            $normalizedCurrency = strtoupper(trim($currency));
-            $normalizedKey = trim($idempotencyKey);
-            $existing = $this->repository->findByIdempotencyKey($normalizedKey);
-            if ($existing instanceof Withdrawal) {
-                $this->assertReplayMatches($existing, $sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency);
+        $reservedSource = null;
+        $reservedSourceId = null;
+        $sourceReference = null;
+        $sourceReleaseKey = null;
 
-                return $existing;
-            }
+        try {
+            return $this->repository->transactional(function () use ($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $currency, $idempotencyKey, &$reservedSource, &$reservedSourceId, &$sourceReference, &$sourceReleaseKey): Withdrawal {
+                $normalizedCurrency = strtoupper(trim($currency));
+                $normalizedKey = trim($idempotencyKey);
+                $existing = $this->repository->findByIdempotencyKey($normalizedKey);
+                if ($existing instanceof Withdrawal) {
+                    $this->assertReplayMatches($existing, $sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency);
 
-            $withdrawal = new Withdrawal($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency, $normalizedKey);
-            $source = $this->sourceFor($withdrawal->sourceType());
-            $sourceReference = $source->reserve(
-                $withdrawal->sourceId(),
-                $withdrawal->amountMinor(),
-                $withdrawal->currency(),
-                $this->key($withdrawal, 'source-reserve'),
-            );
-            try {
-                $withdrawal->reserve($sourceReference);
-            } catch (\InvalidArgumentException $exception) {
-                $source->release(
+                    return $existing;
+                }
+
+                $withdrawal = new Withdrawal($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency, $normalizedKey);
+                $reservedSource = $this->sourceFor($withdrawal->sourceType());
+                $reservedSourceId = $withdrawal->sourceId();
+                $sourceReleaseKey = $this->key($withdrawal, 'source-release');
+                $sourceReference = $reservedSource->reserve(
                     $withdrawal->sourceId(),
-                    $sourceReference,
-                    $this->key($withdrawal, 'source-release'),
+                    $withdrawal->amountMinor(),
+                    $withdrawal->currency(),
+                    $this->key($withdrawal, 'source-reserve'),
                 );
+                $withdrawal->reserve($sourceReference);
+                $this->repository->add($withdrawal);
+                $this->repository->flush();
 
-                throw $exception;
+                return $withdrawal;
+            });
+        } catch (\Throwable $exception) {
+            if ($reservedSource instanceof WithdrawalSourceServiceInterface && null !== $reservedSourceId && null !== $sourceReference && null !== $sourceReleaseKey) {
+                try {
+                    $reservedSource->release($reservedSourceId, $sourceReference, $sourceReleaseKey);
+                } catch (\Throwable $compensationException) {
+                    throw new \RuntimeException(
+                        sprintf('Withdrawal source compensation failed after local request failure: %s', $compensationException->getMessage()),
+                        0,
+                        $exception,
+                    );
+                }
             }
-            $this->repository->add($withdrawal);
-            $this->repository->flush();
 
-            return $withdrawal;
-        });
+            throw $exception;
+        }
     }
 
     /**
