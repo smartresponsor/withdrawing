@@ -122,6 +122,22 @@ final readonly class WithdrawalApplicationService
                     $this->key($withdrawal, 'rail-failure-compensation'),
                 );
             } catch (\Throwable $compensationException) {
+                if (WithdrawalStatus::Processing === $withdrawal->status()) {
+                    try {
+                        $this->repository->flush();
+                    } catch (\Throwable $recoveryPersistenceException) {
+                        throw new \RuntimeException(
+                            sprintf(
+                                'Withdrawal rail compensation failed after local begin failure: %s; processing correlation recovery persistence also failed: %s',
+                                $compensationException->getMessage(),
+                                $recoveryPersistenceException->getMessage(),
+                            ),
+                            0,
+                            $exception,
+                        );
+                    }
+                }
+
                 throw new \RuntimeException(
                     sprintf('Withdrawal rail compensation failed after local begin failure: %s', $compensationException->getMessage()),
                     0,

@@ -403,7 +403,7 @@ final class WithdrawalApplicationServiceTest extends TestCase
         self::assertSame(2, $flushCalls);
     }
 
-    public function testBeginCompensationFailurePreservesLocalPersistenceFailureAsCause(): void
+    public function testBeginCompensationFailurePersistsProcessingCorrelationForRecovery(): void
     {
         $source = $this->createStub(WithdrawalSourceServiceInterface::class);
         $rail = $this->createMock(WithdrawalRailServiceInterface::class);
@@ -415,7 +415,13 @@ final class WithdrawalApplicationServiceTest extends TestCase
             ->willThrowException(new \RuntimeException('Rail compensation failed.'));
 
         $repository = $this->createStub(WithdrawalRepositoryInterface::class);
-        $repository->method('flush')->willThrowException(new \RuntimeException('Begin persistence failed.'));
+        $flushCalls = 0;
+        $repository->method('flush')->willReturnCallback(static function () use (&$flushCalls): void {
+            ++$flushCalls;
+            if (1 === $flushCalls) {
+                throw new \RuntimeException('Begin persistence failed.');
+            }
+        });
         $withdrawal = $this->withdrawal('request-begin-compensation-failure');
         $withdrawal->reserve('reservation-1');
         $service = new WithdrawalApplicationService($repository, [$source], [$rail]);
@@ -430,6 +436,46 @@ final class WithdrawalApplicationServiceTest extends TestCase
             );
             self::assertInstanceOf(\RuntimeException::class, $exception->getPrevious());
             self::assertSame('Begin persistence failed.', $exception->getPrevious()->getMessage());
+            self::assertSame(2, $flushCalls);
+            self::assertSame(WithdrawalStatus::Processing, $withdrawal->status());
+            self::assertSame('rail-compensation-failure', $withdrawal->railReference());
+        }
+    }
+
+    public function testBeginCompensationAndRecoveryPersistenceFailurePreserveOriginalCause(): void
+    {
+        $source = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->method('supports')->willReturn(true);
+        $rail->method('submit')->willReturn('rail-double-failure');
+        $rail->expects(self::once())
+            ->method('compensateFailure')
+            ->with('rail-double-failure', 'request-begin-double-failure:rail-failure-compensation')
+            ->willThrowException(new \RuntimeException('Rail compensation failed.'));
+
+        $repository = $this->createStub(WithdrawalRepositoryInterface::class);
+        $flushCalls = 0;
+        $repository->method('flush')->willReturnCallback(static function () use (&$flushCalls): void {
+            ++$flushCalls;
+            throw new \RuntimeException(1 === $flushCalls ? 'Begin persistence failed.' : 'Recovery persistence failed.');
+        });
+        $withdrawal = $this->withdrawal('request-begin-double-failure');
+        $withdrawal->reserve('reservation-1');
+        $service = new WithdrawalApplicationService($repository, [$source], [$rail]);
+
+        try {
+            $service->begin($withdrawal);
+            self::fail('Double recovery failure must surface with the original persistence failure as cause.');
+        } catch (\RuntimeException $exception) {
+            self::assertSame(
+                'Withdrawal rail compensation failed after local begin failure: Rail compensation failed.; processing correlation recovery persistence also failed: Recovery persistence failed.',
+                $exception->getMessage(),
+            );
+            self::assertInstanceOf(\RuntimeException::class, $exception->getPrevious());
+            self::assertSame('Begin persistence failed.', $exception->getPrevious()->getMessage());
+            self::assertSame(2, $flushCalls);
+            self::assertSame(WithdrawalStatus::Processing, $withdrawal->status());
+            self::assertSame('rail-double-failure', $withdrawal->railReference());
         }
     }
 
