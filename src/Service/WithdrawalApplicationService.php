@@ -51,6 +51,7 @@ final readonly class WithdrawalApplicationService
             return $this->repository->transactional(function () use ($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $currency, $idempotencyKey, &$reservedSource, &$reservedSourceId, &$sourceReference, &$sourceReleaseKey): Withdrawal {
                 $normalizedCurrency = strtoupper(trim($currency));
                 $normalizedKey = trim($idempotencyKey);
+                $this->repository->lockIdempotencyKey($normalizedKey);
                 $existing = $this->repository->findByIdempotencyKey($normalizedKey);
                 if ($existing instanceof Withdrawal) {
                     $this->assertReplayMatches($existing, $sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency);
@@ -225,22 +226,38 @@ final readonly class WithdrawalApplicationService
 
     private function sourceFor(string $sourceType): WithdrawalSourceServiceInterface
     {
+        $match = null;
         foreach ($this->sources as $source) {
             if ($source->supports($sourceType)) {
-                return $source;
+                if ($match instanceof WithdrawalSourceServiceInterface) {
+                    throw new \DomainException(sprintf('Multiple withdrawal sources support %s.', $sourceType));
+                }
+                $match = $source;
             }
         }
-        throw new \DomainException(sprintf('No withdrawal source supports %s.', $sourceType));
+        if (!$match instanceof WithdrawalSourceServiceInterface) {
+            throw new \DomainException(sprintf('No withdrawal source supports %s.', $sourceType));
+        }
+
+        return $match;
     }
 
     private function railFor(string $destinationReference): WithdrawalRailServiceInterface
     {
+        $match = null;
         foreach ($this->rails as $rail) {
             if ($rail->supports($destinationReference)) {
-                return $rail;
+                if ($match instanceof WithdrawalRailServiceInterface) {
+                    throw new \DomainException('Multiple withdrawal rails support the selected destination.');
+                }
+                $match = $rail;
             }
         }
-        throw new \DomainException('No withdrawal rail supports the selected destination.');
+        if (!$match instanceof WithdrawalRailServiceInterface) {
+            throw new \DomainException('No withdrawal rail supports the selected destination.');
+        }
+
+        return $match;
     }
 
     private function requiredSourceReference(Withdrawal $withdrawal): string

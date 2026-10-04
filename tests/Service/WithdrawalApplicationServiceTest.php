@@ -156,6 +156,51 @@ final class WithdrawalApplicationServiceTest extends TestCase
         self::assertSame($existing, $actual);
     }
 
+    public function testRequestLocksIdempotencyKeyBeforeCheckingForReplayOrReservingSource(): void
+    {
+        $calls = [];
+        $repository = $this->createStub(WithdrawalRepositoryInterface::class);
+        $repository->method('transactional')->willReturnCallback(static fn (callable $callback): mixed => $callback());
+        $repository->method('lockIdempotencyKey')->willReturnCallback(static function (string $idempotencyKey) use (&$calls): void {
+            $calls[] = 'lock:'.$idempotencyKey;
+        });
+        $repository->method('findByIdempotencyKey')->willReturnCallback(static function (string $idempotencyKey) use (&$calls): ?Withdrawal {
+            $calls[] = 'find:'.$idempotencyKey;
+
+            return null;
+        });
+        $source = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $source->method('supports')->willReturn(true);
+        $source->method('reserve')->willReturnCallback(static function (string $sourceId, int $amountMinor, string $currency, string $idempotencyKey) use (&$calls): string {
+            $calls[] = 'reserve:'.$idempotencyKey;
+
+            return 'reservation-serialized';
+        });
+        $service = new WithdrawalApplicationService(
+            $repository,
+            [$source],
+            [$this->createStub(WithdrawalRailServiceInterface::class)],
+        );
+
+        $withdrawal = $service->request(
+            'wallet',
+            'wallet-1',
+            'vendor',
+            'vendor-1',
+            'paying:destination-1',
+            2500,
+            'USD',
+            'request-serialized',
+        );
+
+        self::assertSame(WithdrawalStatus::Reserved, $withdrawal->status());
+        self::assertSame([
+            'lock:request-serialized',
+            'find:request-serialized',
+            'reserve:request-serialized:source-reserve',
+        ], $calls);
+    }
+
     public function testMismatchedReplayIsRejected(): void
     {
         $existing = $this->withdrawal('request-6');
@@ -369,6 +414,43 @@ final class WithdrawalApplicationServiceTest extends TestCase
             self::assertInstanceOf(\RuntimeException::class, $exception->getPrevious());
             self::assertSame('Begin persistence failed.', $exception->getPrevious()->getMessage());
         }
+    }
+
+    public function testAmbiguousSourceAndRailOwnershipFailsClosed(): void
+    {
+        $sourceA = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $sourceA->method('supports')->willReturn(true);
+        $sourceB = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $sourceB->method('supports')->willReturn(true);
+        $rail = $this->createStub(WithdrawalRailServiceInterface::class);
+
+        try {
+            (new WithdrawalApplicationService($this->repository(), [$sourceA, $sourceB], [$rail]))->request(
+                'wallet',
+                'wallet-1',
+                'vendor',
+                'vendor-1',
+                'paying:destination-1',
+                2500,
+                'USD',
+                'request-ambiguous-source',
+            );
+            self::fail('Ambiguous withdrawal source ownership must fail closed.');
+        } catch (\DomainException $exception) {
+            self::assertStringContainsString('Multiple withdrawal sources', $exception->getMessage());
+        }
+
+        $source = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $railA = $this->createStub(WithdrawalRailServiceInterface::class);
+        $railA->method('supports')->willReturn(true);
+        $railB = $this->createStub(WithdrawalRailServiceInterface::class);
+        $railB->method('supports')->willReturn(true);
+        $withdrawal = $this->withdrawal('request-ambiguous-rail');
+        $withdrawal->reserve('reservation-1');
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Multiple withdrawal rails');
+        (new WithdrawalApplicationService($this->repository(), [$source], [$railA, $railB]))->begin($withdrawal);
     }
 
     public function testInvalidApplicationTransitionsFailClosed(): void

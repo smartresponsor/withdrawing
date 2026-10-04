@@ -22,6 +22,9 @@ interface WithdrawalRepositoryInterface
      */
     public function transactional(callable $operation): mixed;
 
+    /** Serialize concurrent request creation for one idempotency key within the active transaction. */
+    public function lockIdempotencyKey(string $idempotencyKey): void;
+
     /** Find the withdrawal bound to a normalized idempotency key when present. */
     public function findByIdempotencyKey(string $idempotencyKey): ?Withdrawal;
 
