@@ -201,6 +201,34 @@ final class WithdrawalApplicationServiceTest extends TestCase
         ], $calls);
     }
 
+    public function testInvalidRequestIsRejectedBeforePersistenceOrExternalResolution(): void
+    {
+        $repository = $this->createMock(WithdrawalRepositoryInterface::class);
+        $repository->expects(self::never())->method('transactional');
+        $repository->expects(self::never())->method('lockIdempotencyKey');
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->expects(self::never())->method('supports');
+        $source->expects(self::never())->method('reserve');
+
+        $service = new WithdrawalApplicationService(
+            $repository,
+            [$source],
+            [$this->createStub(WithdrawalRailServiceInterface::class)],
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $service->request(
+            'wallet',
+            'wallet-1',
+            'vendor',
+            'vendor-1',
+            'paying:destination-1',
+            2500,
+            'USD',
+            str_repeat('i', 129),
+        );
+    }
+
     public function testMismatchedReplayIsRejected(): void
     {
         $existing = $this->withdrawal('request-6');

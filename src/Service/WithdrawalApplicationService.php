@@ -42,24 +42,24 @@ final readonly class WithdrawalApplicationService
         string $currency,
         string $idempotencyKey,
     ): Withdrawal {
+        $normalizedCurrency = strtoupper(trim($currency));
+        $normalizedKey = trim($idempotencyKey);
+        $withdrawal = new Withdrawal($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency, $normalizedKey);
+
         $reservedSource = null;
         $reservedSourceId = null;
         $sourceReference = null;
         $sourceReleaseKey = null;
 
         try {
-            return $this->repository->transactional(function () use ($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $currency, $idempotencyKey, &$reservedSource, &$reservedSourceId, &$sourceReference, &$sourceReleaseKey): Withdrawal {
-                $normalizedCurrency = strtoupper(trim($currency));
-                $normalizedKey = trim($idempotencyKey);
+            return $this->repository->transactional(function () use ($withdrawal, $normalizedKey, &$reservedSource, &$reservedSourceId, &$sourceReference, &$sourceReleaseKey): Withdrawal {
                 $this->repository->lockIdempotencyKey($normalizedKey);
                 $existing = $this->repository->findByIdempotencyKey($normalizedKey);
                 if ($existing instanceof Withdrawal) {
-                    $this->assertReplayMatches($existing, $sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency);
+                    $this->assertReplayMatches($existing, $withdrawal);
 
                     return $existing;
                 }
-
-                $withdrawal = new Withdrawal($sourceType, $sourceId, $actorType, $actorId, $destinationReference, $amountMinor, $normalizedCurrency, $normalizedKey);
                 $reservedSource = $this->sourceFor($withdrawal->sourceType());
                 $reservedSourceId = $withdrawal->sourceId();
                 $sourceReleaseKey = $this->key($withdrawal, 'source-release');
@@ -295,9 +295,9 @@ final readonly class WithdrawalApplicationService
         return $withdrawal->idempotencyKey().':'.$operation;
     }
 
-    private function assertReplayMatches(Withdrawal $withdrawal, string $sourceType, string $sourceId, string $actorType, string $actorId, string $destinationReference, int $amountMinor, string $currency): void
+    private function assertReplayMatches(Withdrawal $withdrawal, Withdrawal $candidate): void
     {
-        if ($withdrawal->sourceType() !== trim($sourceType) || $withdrawal->sourceId() !== trim($sourceId) || $withdrawal->actorType() !== trim($actorType) || $withdrawal->actorId() !== trim($actorId) || $withdrawal->destinationReference() !== trim($destinationReference) || $withdrawal->amountMinor() !== $amountMinor || $withdrawal->currency() !== $currency) {
+        if ($withdrawal->sourceType() !== $candidate->sourceType() || $withdrawal->sourceId() !== $candidate->sourceId() || $withdrawal->actorType() !== $candidate->actorType() || $withdrawal->actorId() !== $candidate->actorId() || $withdrawal->destinationReference() !== $candidate->destinationReference() || $withdrawal->amountMinor() !== $candidate->amountMinor() || $withdrawal->currency() !== $candidate->currency()) {
             throw new \DomainException('Withdrawal idempotency key is already bound to different request content.');
         }
     }
