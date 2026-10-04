@@ -6,9 +6,14 @@ namespace App\Withdrawing\RepositoryInterface;
 
 use App\Withdrawing\Entity\Withdrawal;
 
+/**
+ * Defines persistence operations required by withdrawal lifecycle orchestration.
+ */
 interface WithdrawalRepositoryInterface
 {
     /**
+     * Execute a withdrawal persistence operation inside one repository transaction.
+     *
      * @template T
      *
      * @param callable(): T $operation
@@ -17,9 +22,12 @@ interface WithdrawalRepositoryInterface
      */
     public function transactional(callable $operation): mixed;
 
+    /** Find the withdrawal bound to a normalized idempotency key when present. */
     public function findByIdempotencyKey(string $idempotencyKey): ?Withdrawal;
 
+    /** Register a new withdrawal with the current persistence unit of work. */
     public function add(Withdrawal $withdrawal): void;
 
+    /** Flush pending withdrawal persistence changes to durable storage. */
     public function flush(): void;
 }

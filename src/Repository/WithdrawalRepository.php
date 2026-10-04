@@ -8,17 +8,22 @@ use App\Withdrawing\Entity\Withdrawal;
 use App\Withdrawing\RepositoryInterface\WithdrawalRepositoryInterface;
 use Doctrine\ORM\EntityManagerInterface;
 
+/**
+ * Persists withdrawal aggregates and owns their Doctrine transaction boundary.
+ */
 final readonly class WithdrawalRepository implements WithdrawalRepositoryInterface
 {
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
 
+    /** Execute the supplied persistence operation inside one Doctrine transaction. */
     public function transactional(callable $operation): mixed
     {
         return $this->entityManager->wrapInTransaction(static fn (): mixed => $operation());
     }
 
+    /** Find an existing withdrawal by its normalized idempotency key. */
     public function findByIdempotencyKey(string $idempotencyKey): ?Withdrawal
     {
         $withdrawal = $this->entityManager->getRepository(Withdrawal::class)->findOneBy([
@@ -28,11 +33,13 @@ final readonly class WithdrawalRepository implements WithdrawalRepositoryInterfa
         return $withdrawal instanceof Withdrawal ? $withdrawal : null;
     }
 
+    /** Register a new withdrawal with the active Doctrine unit of work. */
     public function add(Withdrawal $withdrawal): void
     {
         $this->entityManager->persist($withdrawal);
     }
 
+    /** Flush pending withdrawal persistence changes to durable storage. */
     public function flush(): void
     {
         $this->entityManager->flush();

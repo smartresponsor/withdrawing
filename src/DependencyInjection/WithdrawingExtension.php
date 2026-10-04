@@ -9,6 +9,9 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
+/**
+ * Loads Withdrawing service wiring into a consuming or standalone Symfony container.
+ */
 final class WithdrawingExtension extends Extension
 {
     public function getAlias(): string
@@ -16,6 +19,9 @@ final class WithdrawingExtension extends Extension
         return 'withdrawing';
     }
 
+    /**
+     * Register the component service configuration in the supplied container builder.
+     */
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configDirectory = __DIR__.'/../../config';

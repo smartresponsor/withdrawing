@@ -22,6 +22,9 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_withdrawing_request_actor_status', columns: ['actor_type', 'actor_id', 'withdrawal_status'])]
 #[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_idempotency_key', columns: ['idempotency_key'])]
 #[ORM\UniqueConstraint(name: 'uniq_withdrawal_request_rail_reference', columns: ['rail_reference'])]
+/**
+ * Persists one source-agnostic withdrawal request and enforces its lifecycle invariants.
+ */
 class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
 {
     use ObjectIdentityEmbeddableTrait;
@@ -117,6 +120,9 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         $this->initializeObjectVersion();
     }
 
+    /**
+     * Attach the source reservation and advance a pending withdrawal to reserved.
+     */
     public function reserve(string $sourceReference): void
     {
         $sourceReference = trim($sourceReference);
@@ -129,6 +135,9 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         $this->sourceReference = $sourceReference;
     }
 
+    /**
+     * Attach the external rail correlation and advance a reserved withdrawal to processing.
+     */
     public function start(string $railReference): void
     {
         $railReference = trim($railReference);
@@ -140,11 +149,17 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         $this->railReference = $railReference;
     }
 
+    /**
+     * Mark a processing withdrawal as successfully settled.
+     */
     public function succeed(): void
     {
         $this->transition(WithdrawalStatus::Processing, WithdrawalStatus::Succeeded);
     }
 
+    /**
+     * Mark a non-terminal withdrawal as failed while rejecting terminal transitions.
+     */
     public function fail(): void
     {
         if (!in_array($this->status, [WithdrawalStatus::Pending, WithdrawalStatus::Reserved, WithdrawalStatus::Processing], true)) {
@@ -153,6 +168,9 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         $this->setStatus(WithdrawalStatus::Failed);
     }
 
+    /**
+     * Cancel a withdrawal before external rail processing begins.
+     */
     public function cancel(): void
     {
         if (!in_array($this->status, [WithdrawalStatus::Pending, WithdrawalStatus::Reserved], true)) {
@@ -161,6 +179,9 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         $this->setStatus(WithdrawalStatus::Cancelled);
     }
 
+    /**
+     * Reverse a previously succeeded withdrawal after external compensation is coordinated.
+     */
     public function reverse(): void
     {
         $this->transition(WithdrawalStatus::Succeeded, WithdrawalStatus::Reversed);
@@ -188,51 +209,75 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
         }
     }
 
+    /** Return the durable withdrawal identifier used for persistence and correlation. */
     public function id(): Uuid
     {
         return $this->id;
     }
+
+    /** Return the source component discriminator that owns the withdrawable value. */
     public function sourceType(): string
     {
         return $this->sourceType;
     }
+
+    /** Return the source-owned identifier of the withdrawable value. */
     public function sourceId(): string
     {
         return $this->sourceId;
     }
+
+    /** Return the business actor discriminator that requested this withdrawal. */
     public function actorType(): string
     {
         return $this->actorType;
     }
+
+    /** Return the business actor identifier that requested this withdrawal. */
     public function actorId(): string
     {
         return $this->actorId;
     }
+
+    /** Return the opaque destination reference resolved by the payment boundary. */
     public function destinationReference(): string
     {
         return $this->destinationReference;
     }
+
+    /** Return the withdrawal amount expressed in integer minor currency units. */
     public function amountMinor(): int
     {
         return $this->amountMinor;
     }
+
+    /** Return the normalized ISO 4217 currency code for this withdrawal. */
     public function currency(): string
     {
         return $this->currency;
     }
+
+    /** Return the stable caller key used to reject mismatched request replays. */
     public function idempotencyKey(): string
     {
         return $this->idempotencyKey;
     }
+
+    /** Return the source reservation reference once reservation has succeeded. */
     public function sourceReference(): ?string
     {
         return $this->sourceReference;
     }
 
+    /**
+     * Return the current business lifecycle state of the withdrawal.
+     */
     public function status(): WithdrawalStatus
     {
         return $this->status;
     }
+
+    /** Return the external rail correlation reference after processing starts. */
     public function railReference(): ?string
     {
         return $this->railReference;

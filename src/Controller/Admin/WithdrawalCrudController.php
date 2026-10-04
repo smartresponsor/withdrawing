@@ -23,6 +23,9 @@ final class WithdrawalCrudController extends AbstractCrudController
         return Withdrawal::class;
     }
 
+    /**
+     * Configure the back-office field projection for withdrawal lifecycle records.
+     */
     public function configureFields(string $pageName): iterable
     {
         yield TextField::new('sourceType');

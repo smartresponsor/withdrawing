@@ -11,6 +11,9 @@ use App\Withdrawing\ServiceInterface\WithdrawalRailServiceInterface;
 use App\Withdrawing\ServiceInterface\WithdrawalSourceServiceInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
+/**
+ * Coordinates withdrawal lifecycle transitions across source reservations and external rails.
+ */
 final readonly class WithdrawalApplicationService
 {
     /**
@@ -26,6 +29,9 @@ final readonly class WithdrawalApplicationService
     ) {
     }
 
+    /**
+     * Create or replay a withdrawal request and reserve its source value atomically.
+     */
     public function request(
         string $sourceType,
         string $sourceId,
@@ -72,6 +78,9 @@ final readonly class WithdrawalApplicationService
         });
     }
 
+    /**
+     * Submit a reserved withdrawal to the matching payment rail exactly once.
+     */
     public function begin(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Processing === $withdrawal->status()) {
@@ -101,6 +110,9 @@ final readonly class WithdrawalApplicationService
         $this->repository->flush();
     }
 
+    /**
+     * Finalize the reserved source value after confirmed rail settlement.
+     */
     public function succeed(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Succeeded === $withdrawal->status()) {
@@ -119,6 +131,9 @@ final readonly class WithdrawalApplicationService
         $this->repository->flush();
     }
 
+    /**
+     * Fail the withdrawal and compensate rail or source reservations when required.
+     */
     public function fail(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Failed === $withdrawal->status()) {
@@ -142,6 +157,9 @@ final readonly class WithdrawalApplicationService
         $this->repository->flush();
     }
 
+    /**
+     * Cancel a pre-processing withdrawal and release any existing source reservation.
+     */
     public function cancel(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Cancelled === $withdrawal->status()) {
@@ -158,6 +176,9 @@ final readonly class WithdrawalApplicationService
         $this->repository->flush();
     }
 
+    /**
+     * Reverse a succeeded withdrawal across both rail and source boundaries.
+     */
     public function reverse(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Reversed === $withdrawal->status()) {
