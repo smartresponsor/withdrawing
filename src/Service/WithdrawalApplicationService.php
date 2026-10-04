@@ -112,15 +112,23 @@ final readonly class WithdrawalApplicationService
         );
         try {
             $withdrawal->start($railReference);
-        } catch (\InvalidArgumentException $exception) {
-            $rail->compensateFailure(
-                $railReference,
-                $this->key($withdrawal, 'rail-failure-compensation'),
-            );
+            $this->repository->flush();
+        } catch (\Throwable $exception) {
+            try {
+                $rail->compensateFailure(
+                    $railReference,
+                    $this->key($withdrawal, 'rail-failure-compensation'),
+                );
+            } catch (\Throwable $compensationException) {
+                throw new \RuntimeException(
+                    sprintf('Withdrawal rail compensation failed after local begin failure: %s', $compensationException->getMessage()),
+                    0,
+                    $exception,
+                );
+            }
 
             throw $exception;
         }
-        $this->repository->flush();
     }
 
     /**

@@ -317,6 +317,60 @@ final class WithdrawalApplicationServiceTest extends TestCase
         }
     }
 
+    public function testPersistenceFailureCompensatesSubmittedRailBeforeBeginFailureEscapes(): void
+    {
+        $source = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->method('supports')->willReturn(true);
+        $rail->expects(self::once())
+            ->method('submit')
+            ->with('paying:destination-1', 2500, 'USD', 'request-begin-persistence-failure:rail-submit')
+            ->willReturn('rail-persistence-failure');
+        $rail->expects(self::once())
+            ->method('compensateFailure')
+            ->with('rail-persistence-failure', 'request-begin-persistence-failure:rail-failure-compensation');
+
+        $repository = $this->createStub(WithdrawalRepositoryInterface::class);
+        $repository->method('flush')->willThrowException(new \RuntimeException('Begin persistence failed.'));
+        $withdrawal = $this->withdrawal('request-begin-persistence-failure');
+        $withdrawal->reserve('reservation-1');
+        $service = new WithdrawalApplicationService($repository, [$source], [$rail]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Begin persistence failed.');
+        $service->begin($withdrawal);
+    }
+
+    public function testBeginCompensationFailurePreservesLocalPersistenceFailureAsCause(): void
+    {
+        $source = $this->createStub(WithdrawalSourceServiceInterface::class);
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->method('supports')->willReturn(true);
+        $rail->method('submit')->willReturn('rail-compensation-failure');
+        $rail->expects(self::once())
+            ->method('compensateFailure')
+            ->with('rail-compensation-failure', 'request-begin-compensation-failure:rail-failure-compensation')
+            ->willThrowException(new \RuntimeException('Rail compensation failed.'));
+
+        $repository = $this->createStub(WithdrawalRepositoryInterface::class);
+        $repository->method('flush')->willThrowException(new \RuntimeException('Begin persistence failed.'));
+        $withdrawal = $this->withdrawal('request-begin-compensation-failure');
+        $withdrawal->reserve('reservation-1');
+        $service = new WithdrawalApplicationService($repository, [$source], [$rail]);
+
+        try {
+            $service->begin($withdrawal);
+            self::fail('Compensation failure must not hide the failed begin operation.');
+        } catch (\RuntimeException $exception) {
+            self::assertSame(
+                'Withdrawal rail compensation failed after local begin failure: Rail compensation failed.',
+                $exception->getMessage(),
+            );
+            self::assertInstanceOf(\RuntimeException::class, $exception->getPrevious());
+            self::assertSame('Begin persistence failed.', $exception->getPrevious()->getMessage());
+        }
+    }
+
     public function testInvalidApplicationTransitionsFailClosed(): void
     {
         $service = $this->service(
