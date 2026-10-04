@@ -5,10 +5,22 @@ declare(strict_types=1);
 namespace App\Withdrawing\Tests\Entity;
 
 use App\Withdrawing\Entity\WithdrawalSettlementEventEntity;
+use App\Withdrawing\Enum\WithdrawalSettlementOutcome;
 use PHPUnit\Framework\TestCase;
 
 final class WithdrawalSettlementEventEntityTest extends TestCase
 {
+    public function testSettlementOutcomeVocabularyIsClosedAndPersistenceStable(): void
+    {
+        self::assertSame(
+            ['received', 'processed', 'ignored', 'failed'],
+            array_map(
+                static fn (WithdrawalSettlementOutcome $outcome): string => $outcome->value,
+                WithdrawalSettlementOutcome::cases(),
+            ),
+        );
+    }
+
     public function testConstructionNormalizesProviderAndPayloadIdentity(): void
     {
         $hash = str_repeat('A', 64);

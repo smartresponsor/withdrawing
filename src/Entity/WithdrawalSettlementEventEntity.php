@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Withdrawing\Entity;
 
+use App\Withdrawing\Enum\WithdrawalSettlementOutcome;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,7 +27,7 @@ class WithdrawalSettlementEventEntity
     #[ORM\Column(name: 'event_type', length: 96)] private string $eventType;
     #[ORM\Column(name: 'rail_reference', length: 191, nullable: true)] private ?string $railReference;
     #[ORM\Column(name: 'payload_hash', length: 64)] private string $payloadHash;
-    #[ORM\Column(length: 32)] private string $outcome = 'received';
+    #[ORM\Column(length: 32, enumType: WithdrawalSettlementOutcome::class)] private WithdrawalSettlementOutcome $outcome = WithdrawalSettlementOutcome::Received;
     #[ORM\Column(name: 'failure_code', length: 128, nullable: true)] private ?string $failureCode = null;
     #[ORM\Column(name: 'failure_message', type: 'text', nullable: true)] private ?string $failureMessage = null;
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable')] private \DateTimeImmutable $createdAt;
@@ -96,7 +97,7 @@ class WithdrawalSettlementEventEntity
     /** Return the current settlement processing outcome recorded by Withdrawing. */
     public function outcome(): string
     {
-        return $this->outcome;
+        return $this->outcome->value;
     }
 
     /** Return the normalized provider failure code when processing retained one. */
@@ -134,7 +135,7 @@ class WithdrawalSettlementEventEntity
         }
         $failureMessage = null === $failureMessage ? null : trim($failureMessage);
         $this->assertOutcomeIsReceived();
-        $this->outcome = 'processed';
+        $this->outcome = WithdrawalSettlementOutcome::Processed;
         $this->failureCode = '' === $failureCode ? null : $failureCode;
         $this->failureMessage = '' === $failureMessage ? null : $failureMessage;
         $this->processedAt = new \DateTimeImmutable();
@@ -145,7 +146,7 @@ class WithdrawalSettlementEventEntity
     public function markIgnored(): void
     {
         $this->assertOutcomeIsReceived();
-        $this->outcome = 'ignored';
+        $this->outcome = WithdrawalSettlementOutcome::Ignored;
         $this->processedAt = new \DateTimeImmutable();
     }
     /**
@@ -160,7 +161,7 @@ class WithdrawalSettlementEventEntity
         self::assertMaxLength($code, 128, 'failure code');
         $message = trim($message);
         $this->assertOutcomeIsReceived();
-        $this->outcome = 'failed';
+        $this->outcome = WithdrawalSettlementOutcome::Failed;
         $this->failureCode = $code;
         $this->failureMessage = '' === $message ? null : $message;
         $this->processedAt = new \DateTimeImmutable();
@@ -168,7 +169,7 @@ class WithdrawalSettlementEventEntity
 
     private function assertOutcomeIsReceived(): void
     {
-        if ('received' !== $this->outcome) {
+        if (WithdrawalSettlementOutcome::Received !== $this->outcome) {
             throw new \LogicException('Withdrawal settlement outcome is already terminal.');
         }
     }
