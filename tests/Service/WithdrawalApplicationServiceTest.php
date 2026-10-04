@@ -587,6 +587,23 @@ final class WithdrawalApplicationServiceTest extends TestCase
         $service->reverse($reversed);
     }
 
+    public function testBeginRejectsMissingSourceReferenceBeforeRailSubmission(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->expects(self::never())->method('supports');
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->expects(self::never())->method('supports');
+        $rail->expects(self::never())->method('submit');
+        $withdrawal = $this->withdrawal('request-missing-source-begin');
+        $withdrawal->reserve('reservation-1');
+        (new \ReflectionProperty(Withdrawal::class, 'sourceReference'))->setValue($withdrawal, null);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Withdrawal source reference is missing.');
+
+        (new WithdrawalApplicationService($this->repository(), [$source], [$rail]))->begin($withdrawal);
+    }
+
     public function testProcessingFailureRejectsMissingSourceReferenceBeforeRailCompensation(): void
     {
         $source = $this->createMock(WithdrawalSourceServiceInterface::class);

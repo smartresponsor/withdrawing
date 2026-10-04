@@ -104,6 +104,7 @@ final readonly class WithdrawalApplicationService
         if (WithdrawalStatus::Reserved !== $withdrawal->status()) {
             throw new \LogicException('Only reserved withdrawal can begin rail processing.');
         }
+        $this->requiredSourceReference($withdrawal);
 
         $rail = $this->railFor($withdrawal->destinationReference());
         $railReference = $rail->submit(
