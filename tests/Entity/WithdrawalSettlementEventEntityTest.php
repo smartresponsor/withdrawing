@@ -137,6 +137,31 @@ final class WithdrawalSettlementEventEntityTest extends TestCase
         $failed->markFailed(str_repeat('c', 129), 'Provider rejected');
     }
 
+    public function testTerminalSettlementOutcomeCannotBeOverwritten(): void
+    {
+        foreach (['processed', 'ignored', 'failed'] as $terminalOutcome) {
+            $event = $this->event();
+            match ($terminalOutcome) {
+                'processed' => $event->markProcessed(),
+                'ignored' => $event->markIgnored(),
+                'failed' => $event->markFailed('provider_failed', 'Provider rejected'),
+            };
+
+            foreach (['processed', 'ignored', 'failed'] as $nextOutcome) {
+                try {
+                    match ($nextOutcome) {
+                        'processed' => $event->markProcessed(),
+                        'ignored' => $event->markIgnored(),
+                        'failed' => $event->markFailed('retry_failed', 'Retry rejected'),
+                    };
+                    self::fail(sprintf('Expected terminal %s outcome to reject %s overwrite.', $terminalOutcome, $nextOutcome));
+                } catch (\LogicException) {
+                    self::assertSame($terminalOutcome, $event->outcome());
+                }
+            }
+        }
+    }
+
     private function event(): WithdrawalSettlementEventEntity
     {
         return new WithdrawalSettlementEventEntity('stripe', 'evt_123', 'payout.paid', 'rail-123', str_repeat('a', 64));

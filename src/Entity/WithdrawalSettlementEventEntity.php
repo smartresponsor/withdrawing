@@ -133,6 +133,7 @@ class WithdrawalSettlementEventEntity
             self::assertMaxLength($failureCode, 128, 'failure code');
         }
         $failureMessage = null === $failureMessage ? null : trim($failureMessage);
+        $this->assertOutcomeIsReceived();
         $this->outcome = 'processed';
         $this->failureCode = '' === $failureCode ? null : $failureCode;
         $this->failureMessage = '' === $failureMessage ? null : $failureMessage;
@@ -143,6 +144,7 @@ class WithdrawalSettlementEventEntity
      */
     public function markIgnored(): void
     {
+        $this->assertOutcomeIsReceived();
         $this->outcome = 'ignored';
         $this->processedAt = new \DateTimeImmutable();
     }
@@ -157,10 +159,18 @@ class WithdrawalSettlementEventEntity
         }
         self::assertMaxLength($code, 128, 'failure code');
         $message = trim($message);
+        $this->assertOutcomeIsReceived();
         $this->outcome = 'failed';
         $this->failureCode = $code;
         $this->failureMessage = '' === $message ? null : $message;
         $this->processedAt = new \DateTimeImmutable();
+    }
+
+    private function assertOutcomeIsReceived(): void
+    {
+        if ('received' !== $this->outcome) {
+            throw new \LogicException('Withdrawal settlement outcome is already terminal.');
+        }
     }
 
     private static function assertMaxLength(string $value, int $maxLength, string $field): void
