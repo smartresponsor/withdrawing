@@ -71,9 +71,36 @@ final class WithdrawalSettlementEventEntityTest extends TestCase
         $event = new WithdrawalSettlementEventEntity('stripe', 'evt_456', 'payout.paid', ' ', str_repeat('b', 64));
         self::assertNull($event->railReference());
 
-        $event->markProcessed();
+        $event->markProcessed(' ', ' ');
         self::assertSame('processed', $event->outcome());
         self::assertNull($event->failureCode());
+        self::assertNull($event->failureMessage());
+        self::assertNotNull($event->processedAt());
+    }
+
+    public function testFailedOutcomeRequiresNonBlankFailureCodeBeforeStateMutation(): void
+    {
+        $event = $this->event();
+
+        try {
+            $event->markFailed(' ', 'Provider rejected');
+            self::fail('Expected a blank settlement failure code to be rejected.');
+        } catch (\InvalidArgumentException) {
+            self::assertSame('received', $event->outcome());
+            self::assertNull($event->failureCode());
+            self::assertNull($event->failureMessage());
+            self::assertNull($event->processedAt());
+        }
+    }
+
+    public function testFailedOutcomeNormalizesBlankOptionalFailureMessageToNull(): void
+    {
+        $event = $this->event();
+
+        $event->markFailed('provider_rejected', ' ');
+
+        self::assertSame('failed', $event->outcome());
+        self::assertSame('provider_rejected', $event->failureCode());
         self::assertNull($event->failureMessage());
         self::assertNotNull($event->processedAt());
     }

@@ -132,9 +132,10 @@ class WithdrawalSettlementEventEntity
         if (null !== $failureCode && '' !== $failureCode) {
             self::assertMaxLength($failureCode, 128, 'failure code');
         }
+        $failureMessage = null === $failureMessage ? null : trim($failureMessage);
         $this->outcome = 'processed';
-        $this->failureCode = $failureCode;
-        $this->failureMessage = null === $failureMessage ? null : trim($failureMessage);
+        $this->failureCode = '' === $failureCode ? null : $failureCode;
+        $this->failureMessage = '' === $failureMessage ? null : $failureMessage;
         $this->processedAt = new \DateTimeImmutable();
     }
     /**
@@ -151,10 +152,14 @@ class WithdrawalSettlementEventEntity
     public function markFailed(string $code, string $message): void
     {
         $code = trim($code);
+        if ('' === $code) {
+            throw new \InvalidArgumentException('Withdrawal settlement failure code is required.');
+        }
         self::assertMaxLength($code, 128, 'failure code');
+        $message = trim($message);
         $this->outcome = 'failed';
         $this->failureCode = $code;
-        $this->failureMessage = trim($message);
+        $this->failureMessage = '' === $message ? null : $message;
         $this->processedAt = new \DateTimeImmutable();
     }
 
