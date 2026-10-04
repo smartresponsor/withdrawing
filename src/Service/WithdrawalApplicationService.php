@@ -98,6 +98,7 @@ final readonly class WithdrawalApplicationService
     public function begin(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Processing === $withdrawal->status()) {
+            $this->repository->flush();
             return;
         }
         if (WithdrawalStatus::Reserved !== $withdrawal->status()) {
@@ -128,6 +129,10 @@ final readonly class WithdrawalApplicationService
                 );
             }
 
+            if (WithdrawalStatus::Processing === $withdrawal->status()) {
+                $withdrawal->restoreReservedAfterStartFailure();
+            }
+
             throw $exception;
         }
     }
@@ -138,6 +143,7 @@ final readonly class WithdrawalApplicationService
     public function succeed(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Succeeded === $withdrawal->status()) {
+            $this->repository->flush();
             return;
         }
         if (WithdrawalStatus::Processing !== $withdrawal->status()) {
@@ -159,6 +165,7 @@ final readonly class WithdrawalApplicationService
     public function fail(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Failed === $withdrawal->status()) {
+            $this->repository->flush();
             return;
         }
         if (WithdrawalStatus::Processing === $withdrawal->status()) {
@@ -185,6 +192,7 @@ final readonly class WithdrawalApplicationService
     public function cancel(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Cancelled === $withdrawal->status()) {
+            $this->repository->flush();
             return;
         }
         if (WithdrawalStatus::Reserved === $withdrawal->status()) {
@@ -204,6 +212,7 @@ final readonly class WithdrawalApplicationService
     public function reverse(Withdrawal $withdrawal): void
     {
         if (WithdrawalStatus::Reversed === $withdrawal->status()) {
+            $this->repository->flush();
             return;
         }
         if (WithdrawalStatus::Succeeded !== $withdrawal->status()) {

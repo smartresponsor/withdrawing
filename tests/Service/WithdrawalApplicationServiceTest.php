@@ -367,23 +367,40 @@ final class WithdrawalApplicationServiceTest extends TestCase
         $source = $this->createStub(WithdrawalSourceServiceInterface::class);
         $rail = $this->createMock(WithdrawalRailServiceInterface::class);
         $rail->method('supports')->willReturn(true);
-        $rail->expects(self::once())
+        $rail->expects(self::exactly(2))
             ->method('submit')
             ->with('paying:destination-1', 2500, 'USD', 'request-begin-persistence-failure:rail-submit')
-            ->willReturn('rail-persistence-failure');
+            ->willReturnOnConsecutiveCalls('rail-persistence-failure', 'rail-retry');
         $rail->expects(self::once())
             ->method('compensateFailure')
             ->with('rail-persistence-failure', 'request-begin-persistence-failure:rail-failure-compensation');
 
         $repository = $this->createStub(WithdrawalRepositoryInterface::class);
-        $repository->method('flush')->willThrowException(new \RuntimeException('Begin persistence failed.'));
+        $flushCalls = 0;
+        $repository->method('flush')->willReturnCallback(static function () use (&$flushCalls): void {
+            ++$flushCalls;
+            if (1 === $flushCalls) {
+                throw new \RuntimeException('Begin persistence failed.');
+            }
+        });
         $withdrawal = $this->withdrawal('request-begin-persistence-failure');
         $withdrawal->reserve('reservation-1');
         $service = new WithdrawalApplicationService($repository, [$source], [$rail]);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Begin persistence failed.');
+        try {
+            $service->begin($withdrawal);
+            self::fail('The first begin attempt must surface its persistence failure.');
+        } catch (\RuntimeException $exception) {
+            self::assertSame('Begin persistence failed.', $exception->getMessage());
+            self::assertSame(WithdrawalStatus::Reserved, $withdrawal->status());
+            self::assertNull($withdrawal->railReference());
+        }
+
         $service->begin($withdrawal);
+
+        self::assertSame(WithdrawalStatus::Processing, $withdrawal->status());
+        self::assertSame('rail-retry', $withdrawal->railReference());
+        self::assertSame(2, $flushCalls);
     }
 
     public function testBeginCompensationFailurePreservesLocalPersistenceFailureAsCause(): void
@@ -451,6 +468,49 @@ final class WithdrawalApplicationServiceTest extends TestCase
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('Multiple withdrawal rails');
         (new WithdrawalApplicationService($this->repository(), [$source], [$railA, $railB]))->begin($withdrawal);
+    }
+
+    public function testIdempotentLifecycleRetriesReflushExistingStateWithoutRepeatingExternalSideEffects(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->expects(self::never())->method('reserve');
+        $source->expects(self::never())->method('release');
+        $source->expects(self::never())->method('finalize');
+        $source->expects(self::never())->method('reverse');
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->expects(self::never())->method('submit');
+        $rail->expects(self::never())->method('compensateFailure');
+        $rail->expects(self::never())->method('reverse');
+
+        $repository = $this->createMock(WithdrawalRepositoryInterface::class);
+        $repository->expects(self::exactly(5))->method('flush');
+        $service = new WithdrawalApplicationService($repository, [$source], [$rail]);
+
+        $processing = $this->withdrawal('retry-processing');
+        $processing->reserve('reservation-processing');
+        $processing->start('rail-processing');
+        $service->begin($processing);
+
+        $succeeded = $this->withdrawal('retry-succeeded');
+        $succeeded->reserve('reservation-succeeded');
+        $succeeded->start('rail-succeeded');
+        $succeeded->succeed();
+        $service->succeed($succeeded);
+
+        $failed = $this->withdrawal('retry-failed');
+        $failed->fail();
+        $service->fail($failed);
+
+        $cancelled = $this->withdrawal('retry-cancelled');
+        $cancelled->cancel();
+        $service->cancel($cancelled);
+
+        $reversed = $this->withdrawal('retry-reversed');
+        $reversed->reserve('reservation-reversed');
+        $reversed->start('rail-reversed');
+        $reversed->succeed();
+        $reversed->reverse();
+        $service->reverse($reversed);
     }
 
     public function testInvalidApplicationTransitionsFailClosed(): void

@@ -150,6 +150,19 @@ class Withdrawal implements ObjectEntityInterface, ObjectVersionedInterface
     }
 
     /**
+     * Restore the reserved state after a submitted rail operation was compensated before local persistence succeeded.
+     */
+    public function restoreReservedAfterStartFailure(): void
+    {
+        if (WithdrawalStatus::Processing !== $this->status) {
+            throw new \LogicException('Only a processing withdrawal can restore its reserved state after a failed start.');
+        }
+
+        $this->railReference = null;
+        $this->setStatus(WithdrawalStatus::Reserved);
+    }
+
+    /**
      * Mark a processing withdrawal as successfully settled.
      */
     public function succeed(): void
