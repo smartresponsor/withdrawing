@@ -184,6 +184,10 @@ final readonly class WithdrawalApplicationService
             $this->repository->flush();
             return;
         }
+        $sourceReference = null;
+        if (in_array($withdrawal->status(), [WithdrawalStatus::Reserved, WithdrawalStatus::Processing], true)) {
+            $sourceReference = $this->requiredSourceReference($withdrawal);
+        }
         if (WithdrawalStatus::Processing === $withdrawal->status()) {
             $railReference = $withdrawal->railReference() ?? throw new \LogicException('Processing withdrawal is missing its rail reference.');
             $this->railFor($withdrawal->destinationReference())->compensateFailure(
@@ -191,10 +195,10 @@ final readonly class WithdrawalApplicationService
                 $this->key($withdrawal, 'rail-failure-compensation'),
             );
         }
-        if (in_array($withdrawal->status(), [WithdrawalStatus::Reserved, WithdrawalStatus::Processing], true)) {
+        if (null !== $sourceReference) {
             $this->sourceFor($withdrawal->sourceType())->release(
                 $withdrawal->sourceId(),
-                $this->requiredSourceReference($withdrawal),
+                $sourceReference,
                 $this->key($withdrawal, 'source-release'),
             );
         }
@@ -238,11 +242,12 @@ final readonly class WithdrawalApplicationService
         if (null === $railReference) {
             throw new \LogicException('Succeeded withdrawal is missing its rail reference.');
         }
+        $sourceReference = $this->requiredSourceReference($withdrawal);
 
         $this->railFor($withdrawal->destinationReference())->reverse($railReference, $this->key($withdrawal, 'rail-reverse'));
         $this->sourceFor($withdrawal->sourceType())->reverse(
             $withdrawal->sourceId(),
-            $this->requiredSourceReference($withdrawal),
+            $sourceReference,
             $this->key($withdrawal, 'source-reverse'),
         );
         $withdrawal->reverse();

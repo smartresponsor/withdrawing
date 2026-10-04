@@ -587,6 +587,45 @@ final class WithdrawalApplicationServiceTest extends TestCase
         $service->reverse($reversed);
     }
 
+    public function testProcessingFailureRejectsMissingSourceReferenceBeforeRailCompensation(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->expects(self::never())->method('supports');
+        $source->expects(self::never())->method('release');
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->expects(self::never())->method('supports');
+        $rail->expects(self::never())->method('compensateFailure');
+        $withdrawal = $this->withdrawal('request-missing-source-failure');
+        $withdrawal->reserve('reservation-1');
+        $withdrawal->start('rail-1');
+        (new \ReflectionProperty(Withdrawal::class, 'sourceReference'))->setValue($withdrawal, null);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Withdrawal source reference is missing.');
+
+        (new WithdrawalApplicationService($this->repository(), [$source], [$rail]))->fail($withdrawal);
+    }
+
+    public function testReversalRejectsMissingSourceReferenceBeforeRailReversal(): void
+    {
+        $source = $this->createMock(WithdrawalSourceServiceInterface::class);
+        $source->expects(self::never())->method('supports');
+        $source->expects(self::never())->method('reverse');
+        $rail = $this->createMock(WithdrawalRailServiceInterface::class);
+        $rail->expects(self::never())->method('supports');
+        $rail->expects(self::never())->method('reverse');
+        $withdrawal = $this->withdrawal('request-missing-source-reversal');
+        $withdrawal->reserve('reservation-1');
+        $withdrawal->start('rail-1');
+        $withdrawal->succeed();
+        (new \ReflectionProperty(Withdrawal::class, 'sourceReference'))->setValue($withdrawal, null);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Withdrawal source reference is missing.');
+
+        (new WithdrawalApplicationService($this->repository(), [$source], [$rail]))->reverse($withdrawal);
+    }
+
     public function testInvalidApplicationTransitionsFailClosed(): void
     {
         $service = $this->service(
