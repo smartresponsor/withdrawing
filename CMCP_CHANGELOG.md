@@ -1,5 +1,16 @@
 # CMCP Orchestration Journal
 
+## 2026-10-06 — engine-20261003234456-withdrawing-b759bc
+
+- Re-entry baseline: Windows MCP recovered and resolved the authoritative `D:\\PhpstormProjects\\www\\Withdrawing` workspace on clean local `master`; the historical 2026-09-29 CanonScanning RED/Inspecting reports were consumed as baseline evidence and reconciled against the materially newer current tree.
+- Contracts consulted: current Withdrawing README/Composer/runtime/source; Objecting, Cruding, Viewing, Interfacing, and Gating README/Composer contracts; Canonization normative Canon004, Canon018, Canon025, Canon031, Canon034, Canon040, Canon041, Canon042, Canon045, Canon047, and Canon052 texts.
+- Target mapping: Objecting owns reusable system-field packs; Cruding owns generic CRUD; Viewing/Interfacing own presentation; direct Doctrine manager access remains repository-owned; standalone Symfony runtime, Panther/Playwright tooling, local dependency closure, PHPDoc, ignore baseline, and Gating integration are already materialized. Canon004/018 identity migration remains coordinated consumer/package work rather than a safe unilateral local rename.
+- Market/enterprise contour: mature payout systems use durable idempotency, explicit asynchronous payout state, stable source/rail correlation, webhook/reconciliation tracking, and compensation/reversal semantics. Wallet/ledger ownership and provider-specific transport remain outside Withdrawing. Growth remains richer provider-neutral tracing/ETA/reconciliation diagnostics and does not block RC.
+- Current acceptance: `composer gate` GREEN (10 rules, 0 failed, 0 warnings); RC full diagnostic GREEN with zero canon issues; Composer validation, PHPStan, PHPUnit 50/50 with 216 assertions, coverage, and repository Playwright execution paths all GREEN; `composer cs:check` GREEN; `composer schema:parity` GREEN with 2 owned tables / 7 migrations synchronized.
+- Material decision: no additional product-code mutation is justified on the current green fingerprint; fabricating a source change would add risk without closing an evidenced correctness or canon defect.
+- Fresh Inspecting: `D--PhpstormProjects-www-Withdrawing-20261006-173615.json` reports PHPStan 0 errors and only two medium non-autofixable design observations (`Withdrawal` public API size; `WithdrawalApplicationService` cohesion heuristic). Neither is promoted by current canon/gates to an RC blocker.
+- Behavioral/visual applicability: no route, template, form, navigation, asset, browser/mobile interaction, or user-observable UI changed in this execution window, so runtime restart and screenshot generation are not applicable under REUSE_EXISTING_FIRST.
+
 ## 2026-10-05 — engine-20261004021900-withdrawing-16c513
 
 - Re-entry baseline: Console MCP recovered; current `master` was clean at reconnaissance start. The supplied 2026-09-29 CanonScanning RED report is stale for multiple items already remediated in the current tree (standalone Symfony runtime, Panther/Playwright tooling, dependency closure, repository-owned Doctrine persistence and canonical Gating integration).
