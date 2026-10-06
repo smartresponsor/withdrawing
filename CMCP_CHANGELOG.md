@@ -1,5 +1,15 @@
 # CMCP Orchestration Journal
 
+## 2026-10-05 — engine-20261004021900-withdrawing-16c513
+
+- Re-entry baseline: Console MCP recovered; current `master` was clean at reconnaissance start. The supplied 2026-09-29 CanonScanning RED report is stale for multiple items already remediated in the current tree (standalone Symfony runtime, Panther/Playwright tooling, dependency closure, repository-owned Doctrine persistence and canonical Gating integration).
+- Contracts reviewed in this window: current Withdrawing Composer/RC inventory; Objecting, Cruding, Viewing, Interfacing and Gating README/Composer contracts; Canonization README and normative Canon029; supplied historical Inspecting evidence. Market comparison remains aligned with source-agnostic payout lifecycle, idempotency and asynchronous status/reconciliation while wallet/provider ownership stays outside Withdrawing.
+- Current RC diagnose: zero canon issues. Validation passed Composer validation, PHPUnit 50/50 with 216 assertions and coverage; PHPStan alone failed because its cache metadata targeted the Windows user temp directory.
+- Material remediation: `phpstan.neon` now pins `tmpDir: var/phpstan`, keeping static-analysis runtime state repository-local and reproducible under Canon029.
+- Acceptance: `composer validate --strict --check-lock` GREEN; `composer phpstan` GREEN (20/20, 0 errors); PHPUnit GREEN (50/50, 216 assertions); Gating GREEN (10 rules, 0 failed, 0 warnings). Aggregate RC validate timed out after these constituent gates, so no false aggregate GREEN is claimed.
+- Post-mutation Inspecting GREEN for static correctness: PHPStan 0 errors; two medium non-autofixable design observations remain (`Withdrawal` broad public API and `WithdrawalApplicationService` cohesion), neither promoted by canon/gates to an RC blocker. Report: `D--PhpstormProjects-www-Withdrawing-20261006-013838.json`.
+- No route/template/form/navigation/runtime behavior changed, so Playwright/screenshots/runtime restart are not applicable. Final Git reconciliation follows.
+
 ## 2026-10-04 — engine-20261003202338-withdrawing-9805e8
 
 - Continuation baseline: Console MCP recovered and resolved the authoritative `D:\\PhpstormProjects\\www\\Withdrawing` workspace on local `master` at `2b6b551d7856a062bc1237aec9f19b805425b102`; no remote/upstream is configured. Entry dirty state is limited to this shared orchestration journal and is preserved without reset/stash/cleanup.
